@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"github.com/m-horky/insights-client-next/internal/api/inventory"
+	"github.com/m-horky/insights-client-next/internal/system"
 	"log/slog"
 	"os"
 	"strings"
@@ -48,6 +50,8 @@ func main() {
 		// commands
 		&cli.BoolFlag{Name: "register"},
 		&cli.BoolFlag{Name: "unregister"},
+		&cli.StringFlag{Name: "display-name"},
+		&cli.StringFlag{Name: "ansible-host"},
 		&cli.BoolFlag{Name: "version"},
 		&cli.BoolFlag{Name: "status"},
 		&cli.BoolFlag{Name: "help"},
@@ -57,6 +61,7 @@ func main() {
 				return core.VerifyCollector(collector)
 			},
 		},
+		// TODO --collector-list?
 		// deprecated commands
 		&cli.BoolFlag{Name: "test-connection"},
 	}
@@ -75,6 +80,7 @@ func getHelp() string {
 	builder.WriteString("\n")
 	builder.WriteString("Manage data collection for Red Hat Insights.\n")
 
+	// We can lie a bit; we can pretend --display-name is only available during registration.
 	builder.WriteString("\nCOMMANDS\n")
 	builder.WriteString("--register               register the system\n")
 	builder.WriteString("  [--display-name NAME]    and set Insights hostname\n")
@@ -117,12 +123,28 @@ func run(c *cli.Context) error {
 		return nil
 	}
 	if c.Bool("register") {
+		if _, err := system.GetInventoryHost(); err == nil {
+			fmt.Printf("Error: This host is already registered.\n")
+			return nil
+		}
 		slog.Warn("register: not implemented")
 		return nil
 	}
 	if c.Bool("unregister") {
 		slog.Warn("unregister: not implemented")
 		return nil
+	}
+	if c.IsSet("display-name") {
+		host, err := system.GetInventoryHost()
+		if err != nil {
+			fmt.Println("Error: Host is not registered.")
+			return nil
+		}
+		err = inventory.UpdateDisplayName(host.InsightsInventoryID, c.String("display-name"))
+		if err != nil {
+			return err
+		}
+		fmt.Println("OK: Display name has been updated.")
 	}
 	if c.Bool("status") || c.Bool("test-connection") {
 		slog.Warn("status: not implemented")
@@ -133,8 +155,6 @@ func run(c *cli.Context) error {
 		return nil
 	}
 
-	// implicit --help
 	// FIXME Implicitly we should run Advisor collection instead.
-	fmt.Print(getHelp())
 	return nil
 }

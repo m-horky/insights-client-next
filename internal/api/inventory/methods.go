@@ -37,3 +37,34 @@ func GetHost(insightsClientID string) (Host, error) {
 
 	return hosts.Results[0], nil
 }
+
+func UpdateDisplayName(insightsInventoryID, displayName string) error {
+	slog.Debug("updating HBI host's display name", slog.String("new name", displayName))
+
+	params := url.Values{}
+	params.Set("display_name", displayName)
+
+	body, err := json.Marshal(map[string]string{"display_name": displayName})
+	if err != nil {
+		slog.Error("could not encode payload", slog.String("error", err.Error()))
+		return err
+	}
+
+	response, err := service.MakeRequest(
+		"PATCH",
+		fmt.Sprintf("hosts/%s", insightsInventoryID),
+		url.Values{},
+		map[string][]string{"Content-Type": {"application/json"}},
+		body,
+	)
+	if err != nil {
+		slog.Error("could not contact HBI", slog.String("error", err.Error()))
+		return err
+	}
+
+	if response.Code != 200 {
+		slog.Warn("HBI responded with error", slog.String("response", string(response.Data)))
+		return fmt.Errorf("could not update host's display name, received status code %d", response.Code)
+	}
+	return nil
+}
