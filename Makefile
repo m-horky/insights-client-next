@@ -1,16 +1,13 @@
-VERSION = 4.0.0a0
-# When building from commit that is not tagged, include Git hash.
-GITHASH = $(shell git log -1 --pretty=format:"%h")
-GITTAGS = $(shell git describe --tags 2>/dev/null)
+# VERSION is generated in a format of {{ latest tag }}+g{{ current commit tag }}
+GITTAGS = $(shell git describe --tags 2>/dev/null | cut -d '-' -f 1,3 | tr '-' '+')
 ifeq ($(GITTAGS),)
-RICH_VERSION = $(VERSION)+$(GITHASH)
+VERSION = +g$(shell git log -1 --pretty=format:"%h")
 else
-RICH_VERSION = $(VERSION)
+VERSION = $(GITTAGS)
 endif
 
 .PHONY: build
 build:
-	mkdir -p bin/ && \
-	go build \
-		-ldflags "-X \"github.com/m-horky/insights-client-next/internal/constants.Version=$(RICH_VERSION)\"" \
+	mkdir -p bin/ && go build \
+		-ldflags "-X \"github.com/m-horky/insights-client-next/internal/constants.Version=$(VERSION)\"" \
 		-o bin/ ./...
