@@ -21,10 +21,13 @@ func ClearCache() {
 }
 
 type Configuration struct {
-	APIHost     string        `config:"api_host"`
-	APIPort     uint64        `config:"api_port"`
-	HTTPTimeout time.Duration `config:"http_timeout"`
-	LogLevel    slog.Level    `config:"loglevel"`
+	APIHost             string        `config:"api_host"`
+	APIPort             uint64        `config:"api_port"`
+	HTTPTimeout         time.Duration `config:"http_timeout"`
+	LogLevel            slog.Level    `config:"loglevel"`
+	IdentityCertificate string        `config:"identity_certificate"`
+	IdentityKey         string        `config:"identity_key"`
+	CACertificate       string        `config:"ca_certificate"`
 }
 
 // update overwrites existing values with new ones.
@@ -54,14 +57,26 @@ func (c *Configuration) update(data map[string]string) {
 			c.LogLevel = slog.LevelError
 		}
 	}
+	if value, ok := data["identity_certificate"]; ok {
+		c.IdentityCertificate = value
+	}
+	if value, ok := data["identity_key"]; ok {
+		c.IdentityKey = value
+	}
+	if value, ok := data["ca_certificate"]; ok {
+		c.CACertificate = value
+	}
 }
 
 func GetDefaultConfiguration() Configuration {
 	return Configuration{
-		APIHost:     "cert.cloud.redhat.com",
-		APIPort:     443,
-		HTTPTimeout: 120 * time.Second,
-		LogLevel:    slog.LevelDebug,
+		APIHost:             "cert.cloud.redhat.com",
+		APIPort:             443,
+		HTTPTimeout:         120 * time.Second,
+		LogLevel:            slog.LevelDebug,
+		IdentityCertificate: "/etc/pki/consumer/cert.pem",
+		IdentityKey:         "/etc/pki/consumer/key.pem",
+		CACertificate:       "/etc/rhsm/ca/redhat-ep.pem",
 	}
 }
 
