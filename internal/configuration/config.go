@@ -21,6 +21,7 @@ func ClearCache() {
 }
 
 type Configuration struct {
+	APIProtocol         string        `config:"api_protocol"`
 	APIHost             string        `config:"api_host"`
 	APIPort             uint64        `config:"api_port"`
 	HTTPTimeout         time.Duration `config:"http_timeout"`
@@ -32,6 +33,9 @@ type Configuration struct {
 
 // update overwrites existing values with new ones.
 func (c *Configuration) update(data map[string]string) {
+	if value, ok := data["api_protocol"]; ok {
+		c.APIProtocol = value
+	}
 	if value, ok := data["api_host"]; ok {
 		c.APIHost = value
 	}
@@ -70,6 +74,7 @@ func (c *Configuration) update(data map[string]string) {
 
 func GetDefaultConfiguration() Configuration {
 	return Configuration{
+		APIProtocol:         "https",
 		APIHost:             "cert.cloud.redhat.com",
 		APIPort:             443,
 		HTTPTimeout:         120 * time.Second,

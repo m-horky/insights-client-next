@@ -8,7 +8,7 @@ import (
 	"os"
 )
 
-func NewAuthenticatedClient(certPath, keyPath, caCertPath string) (http.Client, error) {
+func NewAuthenticatedClient(certPath, keyPath string) (http.Client, error) {
 	cert, err := tls.LoadX509KeyPair(certPath, keyPath)
 	if err != nil {
 		slog.Error("could not load identity certificate", slog.Any("error", err))
