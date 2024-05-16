@@ -2,19 +2,22 @@ package main
 
 import (
 	"fmt"
-	"github.com/m-horky/insights-client-next/internal/core"
 	"log/slog"
 	"os"
 	"strings"
 
-	"github.com/m-horky/insights-client-next/internal/constants"
-	"github.com/m-horky/insights-client-next/internal/enums"
 	"github.com/urfave/cli/v2"
+
+	"github.com/m-horky/insights-client-next/internal/configuration"
+	"github.com/m-horky/insights-client-next/internal/constants"
+	"github.com/m-horky/insights-client-next/internal/core"
+	"github.com/m-horky/insights-client-next/internal/enums"
 )
 
 func init() {
+	config := configuration.GetConfiguration()
 	slog.SetDefault(slog.New(slog.NewTextHandler(
-		os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug},
+		os.Stderr, &slog.HandlerOptions{Level: config.LogLevel},
 	)))
 }
 
