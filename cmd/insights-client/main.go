@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"github.com/m-horky/insights-client-next/internal/api/inventory"
+	"github.com/m-horky/insights-client-next/internal/core"
 	"github.com/m-horky/insights-client-next/internal/system"
 	"github.com/urfave/cli/v3"
 	"log/slog"
 	"os"
+	"strings"
 
 	"github.com/m-horky/insights-client-next/internal/configuration"
 	"github.com/m-horky/insights-client-next/internal/constants"
@@ -42,15 +44,19 @@ func main() {
 			&cli.BoolFlag{Name: "status", Category: "host", Usage: "display host status"},
 			&cli.BoolFlag{Name: "display-name", Category: "host", Usage: "set host display name in Inventory"},
 			&cli.BoolFlag{Name: "ansible-host", Category: "host", Usage: "set Ansible hostname in Inventory"},
-			&cli.StringFlag{Name: "collector", Category: "data collection", Usage: "run collector"},
+			&cli.StringFlag{
+				Name: "collector", Category: "data collection", Usage: "run collector",
+				Action: func(ctx context.Context, command *cli.Command, app string) error {
+					return core.VerifyCollector(app)
+				},
+			},
+			&cli.BoolFlag{Name: "collector-list", Category: "data collection", Usage: "list data collectors"},
 			// Deprecated commands
 			&cli.BoolFlag{Name: "test-connection", Category: "deprecated", Usage: "alias for '--status'"},
 			&cli.BoolFlag{Name: "compliance", Category: "deprecated", Usage: "alias for '--collector compliance'"},
 			// Flags
 			&cli.StringFlag{
-				Name:     "format",
-				Category: "global flags",
-				Value:    "human",
+				Name: "format", Category: "global flags", Value: "human",
 				Action: func(ctx context.Context, cmd *cli.Command, s string) error {
 					if s != "human" && s != "json" {
 						fmt.Printf("Error: invalid format: '%s'\n", s)
@@ -71,8 +77,6 @@ func main() {
 
 // run acts as an action router.
 func run(ctx context.Context, cmd *cli.Command) error {
-	cli.DefaultAppComplete(ctx, cmd)
-
 	// Flags
 	if _, err := enums.ParseFormat(cmd.String("format")); err != nil {
 		slog.Error("could not parse format", slog.Any("error", err))
@@ -115,8 +119,19 @@ func run(ctx context.Context, cmd *cli.Command) error {
 		slog.Warn("status: not implemented")
 		return nil
 	}
+
 	if cmd.IsSet("collector") {
 		slog.Warn("collector: not implemented")
+		return nil
+	}
+	if cmd.IsSet("collector-list") {
+		fmt.Print("Available collectors: ")
+		var collectors []string
+		for _, collector := range core.Collectors {
+			collectors = append(collectors, collector.Name)
+		}
+		fmt.Print(strings.Join(collectors, ", "))
+		fmt.Print("\n")
 		return nil
 	}
 

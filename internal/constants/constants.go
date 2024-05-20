@@ -4,3 +4,4 @@ package constants
 var Version string
 
 var ConfigPath string = "/etc/insights-client/insights-client.conf"
+var CollectorsDirectory string = "/etc/insights-client/collectors"
