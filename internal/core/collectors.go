@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 type Collector struct {
@@ -17,32 +16,22 @@ type Collector struct {
 	ContentType string
 }
 
-// Collectors is a list of existing data collectors.
-var Collectors []Collector
-
-func init() {
-	collectors, err := LoadCollectorsFromDirectory(constants.CollectorsDirectory)
+// GetCollector looks for a collector defined on a system.
+func GetCollector(app string) (Collector, error) {
+	collectors, err := LoadCollectors()
 	if err != nil {
-		slog.Error("failed to load collectors", slog.Any("error", err))
+		return Collector{}, err
 	}
-	Collectors = collectors
-}
-
-// VerifyCollector checks if the collector exists.
-func VerifyCollector(app string) error {
-	for _, collector := range Collectors {
+	for _, collector := range collectors {
 		if collector.Name == app {
-			return nil
+			return collector, nil
 		}
 	}
-	var names []string
-	for _, collector := range Collectors {
-		names = append(names, collector.Name)
-	}
-	return fmt.Errorf(
-		"unknown collector: %s; options are: %s",
-		app, strings.Join(names, ", "),
-	)
+	return Collector{}, fmt.Errorf("unknown collector: %s", app)
+}
+
+func LoadCollectors() ([]Collector, error) {
+	return LoadCollectorsFromDirectory(constants.CollectorsDirectory)
 }
 
 func LoadCollectorsFromDirectory(directory string) ([]Collector, error) {
@@ -56,10 +45,24 @@ func LoadCollectorsFromDirectory(directory string) ([]Collector, error) {
 	for _, file := range paths {
 		err := ini.LoadFiles(filepath.Join(directory, file.Name()))
 		if err != nil {
-			slog.Warn("malformed collector definition", slog.String("path", file.Name()), slog.Any("err", err))
+			slog.Warn("malformed collector", slog.String("file", file.Name()), slog.Any("err", err))
 			continue
 		}
-		data := ini.Data()["collector"]
+		var data ini.Section = ini.Data()["collector"]
+
+		missingKeys := false
+		for _, key := range []string{"name", "version", "exec", "content-type"} {
+			if _, ok := data[key]; !ok {
+				slog.Error("collector is missing key-value pair", slog.String("key", key), slog.String("path", file.Name()))
+				missingKeys = true
+			}
+		}
+
+		if missingKeys {
+			slog.Debug("skipping malformed collector", slog.String("file", file.Name()))
+			continue
+		}
+
 		collectors = append(
 			collectors,
 			Collector{

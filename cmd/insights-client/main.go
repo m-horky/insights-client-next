@@ -47,7 +47,12 @@ func main() {
 			&cli.StringFlag{
 				Name: "collector", Category: "data collection", Usage: "run collector",
 				Action: func(ctx context.Context, command *cli.Command, app string) error {
-					return core.VerifyCollector(app)
+					_, err := core.GetCollector(app)
+					if err != nil {
+						fmt.Printf("Error: invalid collector: '%s'\n", app)
+						return err
+					}
+					return nil
 				},
 			},
 			&cli.BoolFlag{Name: "collector-list", Category: "data collection", Usage: "list data collectors"},
@@ -125,12 +130,17 @@ func run(ctx context.Context, cmd *cli.Command) error {
 		return nil
 	}
 	if cmd.IsSet("collector-list") {
-		fmt.Print("Available collectors: ")
-		var collectors []string
-		for _, collector := range core.Collectors {
-			collectors = append(collectors, collector.Name)
+		var collectorNames []string
+		collectors, err := core.LoadCollectors()
+		if err != nil {
+			fmt.Printf("Error: could not load collectors: %s\n", err.Error())
+			return err
 		}
-		fmt.Print(strings.Join(collectors, ", "))
+		for _, collector := range collectors {
+			collectorNames = append(collectorNames, collector.Name)
+		}
+		fmt.Print("Available collectors: ")
+		fmt.Print(strings.Join(collectorNames, ", "))
 		fmt.Print("\n")
 		return nil
 	}
