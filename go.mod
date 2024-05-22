@@ -3,6 +3,8 @@ module github.com/m-horky/insights-client-next
 go 1.22.2
 
 require (
+	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
+	github.com/google/uuid v1.6.0
 	github.com/gookit/ini/v2 v2.2.3
 	github.com/urfave/cli/v3 v3.0.0-alpha9
 )

@@ -126,8 +126,19 @@ func run(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if cmd.IsSet("collector") {
-		slog.Warn("collector: not implemented")
-		return nil
+		collector, err := core.GetCollector(cmd.String("collector"))
+		if err != nil {
+			fmt.Printf("Error: could not load collector: %s\n", err.Error())
+			return err
+		}
+		archive, err := core.NewArchive(collector)
+		if err != nil {
+			fmt.Printf("Error: could not create archive: %s\n", err.Error())
+			return err
+		}
+
+		// TODO Upload
+		fmt.Printf("%#v\n", archive)
 	}
 	if cmd.IsSet("collector-list") {
 		var collectorNames []string
