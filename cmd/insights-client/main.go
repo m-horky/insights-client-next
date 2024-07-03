@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"strings"
 
 	"github.com/urfave/cli/v3"
 
+	"github.com/m-horky/insights-client-next/cmd/insights-client/actions"
 	"github.com/m-horky/insights-client-next/internal/api/inventory"
 	"github.com/m-horky/insights-client-next/internal/configuration"
 	"github.com/m-horky/insights-client-next/internal/constants"
@@ -27,8 +27,7 @@ func init() {
 
 	cli.VersionFlag = &cli.BoolFlag{Name: "version"}
 	cli.VersionPrinter = func(cmd *cli.Command) {
-		fmt.Printf("Insights Client: %s\n", constants.Version)
-		fmt.Printf("Insights Core:   none\n")
+		_ = actions.PrintVersion()
 	}
 }
 
@@ -127,37 +126,12 @@ func run(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if cmd.IsSet("collector") {
-		collector, err := core.GetCollector(cmd.String("collector"))
-		if err != nil {
-			fmt.Printf("Error: could not load collector: %s\n", err.Error())
-			return err
-		}
-		archive, err := core.NewArchive(collector)
-		if err != nil {
-			fmt.Printf("Error: could not create archive: %s\n", err.Error())
-			return err
-		}
-
-		// TODO Upload
-		fmt.Printf("%#v\n", archive)
+		return actions.RunCollector(cmd.String("collector"))
 	}
 	if cmd.IsSet("collector-list") {
-		var collectorNames []string
-		collectors, err := core.LoadCollectors()
-		if err != nil {
-			fmt.Printf("Error: could not load collectors: %s\n", err.Error())
-			return err
-		}
-		for _, collector := range collectors {
-			collectorNames = append(collectorNames, collector.Name)
-		}
-		fmt.Print("Available collectors: ")
-		fmt.Print(strings.Join(collectorNames, ", "))
-		fmt.Print("\n")
-		return nil
+		return actions.ListCollectors()
 	}
 
-	// FIXME Implicitly we should run Advisor collection instead.
-	slog.Warn("default: not implemented")
-	return nil
+	slog.Debug("no argument specified, running default collector")
+	return actions.RunCollector(constants.DefaultCollector)
 }
