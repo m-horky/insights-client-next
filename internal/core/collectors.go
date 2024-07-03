@@ -2,11 +2,13 @@ package core
 
 import (
 	"fmt"
-	"github.com/gookit/ini/v2"
-	"github.com/m-horky/insights-client-next/internal/constants"
 	"log/slog"
 	"os"
 	"path/filepath"
+
+	"github.com/gookit/ini/v2"
+
+	"github.com/m-horky/insights-client-next/internal/constants"
 )
 
 type Collector struct {

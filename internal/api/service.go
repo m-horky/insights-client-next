@@ -3,12 +3,13 @@ package api
 import (
 	"bytes"
 	"fmt"
-	"github.com/m-horky/insights-client-next/internal/configuration"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/m-horky/insights-client-next/internal/configuration"
 )
 
 type Service struct {

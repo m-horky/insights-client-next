@@ -3,17 +3,18 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/m-horky/insights-client-next/internal/api/inventory"
-	"github.com/m-horky/insights-client-next/internal/core"
-	"github.com/m-horky/insights-client-next/internal/system"
-	"github.com/urfave/cli/v3"
 	"log/slog"
 	"os"
 	"strings"
 
+	"github.com/urfave/cli/v3"
+
+	"github.com/m-horky/insights-client-next/internal/api/inventory"
 	"github.com/m-horky/insights-client-next/internal/configuration"
 	"github.com/m-horky/insights-client-next/internal/constants"
+	"github.com/m-horky/insights-client-next/internal/core"
 	"github.com/m-horky/insights-client-next/internal/enums"
+	"github.com/m-horky/insights-client-next/internal/system"
 )
 
 func init() {

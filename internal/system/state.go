@@ -2,9 +2,10 @@ package system
 
 import (
 	"errors"
-	"github.com/m-horky/insights-client-next/internal/api/inventory"
 	"log/slog"
 	"os"
+
+	"github.com/m-horky/insights-client-next/internal/api/inventory"
 )
 
 func GetInventoryHost() (inventory.Host, error) {

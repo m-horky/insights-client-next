@@ -2,13 +2,14 @@ package core
 
 import (
 	"fmt"
-	"github.com/google/shlex"
-	"github.com/google/uuid"
 	"io"
 	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
+
+	"github.com/google/shlex"
+	"github.com/google/uuid"
 )
 
 type Archive struct {

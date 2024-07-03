@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/m-horky/insights-client-next/internal/api"
 	"log/slog"
 	"net/url"
+
+	"github.com/m-horky/insights-client-next/internal/api"
 )
 
 var service = api.NewService("api/inventory/v1")
