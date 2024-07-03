@@ -36,6 +36,7 @@ func GetHost(insightsClientID string) (Host, error) {
 		slog.Debug("HBI returned more hosts than expected", slog.Int("count", len(hosts.Results)))
 	}
 
+	slog.Debug("HBI host obtained")
 	return hosts.Results[0], nil
 }
 

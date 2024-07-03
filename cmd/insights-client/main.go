@@ -9,7 +9,6 @@ import (
 	"github.com/urfave/cli/v3"
 
 	"github.com/m-horky/insights-client-next/cmd/insights-client/actions"
-	"github.com/m-horky/insights-client-next/internal/api/inventory"
 	"github.com/m-horky/insights-client-next/internal/configuration"
 	"github.com/m-horky/insights-client-next/internal/constants"
 	"github.com/m-horky/insights-client-next/internal/core"
@@ -36,7 +35,7 @@ func main() {
 		Name:            "insights-client",
 		HideHelpCommand: true,
 		Version:         constants.Version,
-		Usage:           "Manage data connection for Red Hat Insights",
+		Usage:           "Upload data to Red Hat Insights",
 		UsageText:       fmt.Sprintf("%s COMMAND [FLAGS...]", os.Args[0]),
 		Flags: []cli.Flag{
 			&cli.BoolFlag{Name: "register", Category: "host", Usage: "register the host"},
@@ -45,11 +44,13 @@ func main() {
 			&cli.BoolFlag{Name: "display-name", Category: "host", Usage: "set host display name in Inventory"},
 			&cli.BoolFlag{Name: "ansible-host", Category: "host", Usage: "set Ansible hostname in Inventory"},
 			&cli.StringFlag{
-				Name: "collector", Category: "data collection", Usage: "run collector",
-				Action: func(ctx context.Context, command *cli.Command, app string) error {
-					_, err := core.GetCollector(app)
-					if err != nil {
-						fmt.Printf("Error: invalid collector: '%s'\n", app)
+				Name:     "collector",
+				Aliases:  []string{"m"},
+				Category: "data collection",
+				Usage:    "run collector",
+				Action: func(ctx context.Context, command *cli.Command, collector string) error {
+					if _, err := core.GetCollector(collector); err != nil {
+						fmt.Printf("Error: invalid collector: '%s'\n", collector)
 						return err
 					}
 					return nil
@@ -61,11 +62,13 @@ func main() {
 			&cli.BoolFlag{Name: "compliance", Category: "deprecated", Usage: "alias for '--collector compliance'"},
 			// Flags
 			&cli.StringFlag{
-				Name: "format", Category: "global flags", Value: "human",
-				Action: func(ctx context.Context, cmd *cli.Command, s string) error {
-					if s != "human" && s != "json" {
-						fmt.Printf("Error: invalid format: '%s'\n", s)
-						return fmt.Errorf("invalid format: %s", s)
+				Name:     "format",
+				Category: "global flags",
+				Value:    "human",
+				Action: func(ctx context.Context, cmd *cli.Command, format string) error {
+					if format != "human" && format != "json" {
+						fmt.Printf("Error: invalid format: '%s'\n", format)
+						return fmt.Errorf("invalid format: %s", format)
 					}
 					return nil
 				},
@@ -109,16 +112,7 @@ func run(ctx context.Context, cmd *cli.Command) error {
 		return nil
 	}
 	if cmd.IsSet("display-name") {
-		host, err := system.GetInventoryHost()
-		if err != nil {
-			fmt.Println("Error: Host is not registered.")
-			return nil
-		}
-		err = inventory.UpdateDisplayName(host.InsightsInventoryID, cmd.String("display-name"))
-		if err != nil {
-			return err
-		}
-		fmt.Println("OK: Display name has been updated.")
+		return actions.SetDisplayName(cmd.String("display-name"))
 	}
 	if cmd.Bool("status") || cmd.Bool("test-connection") {
 		slog.Warn("status: not implemented")
