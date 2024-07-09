@@ -1,4 +1,4 @@
-package core
+package collectors
 
 import (
 	"fmt"
@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/google/shlex"
 	"github.com/gookit/ini/v2"
 
 	"github.com/m-horky/insights-client-next/internal/constants"
@@ -14,7 +15,9 @@ import (
 type Collector struct {
 	Name        string
 	Version     string
+	Env         []string
 	Exec        string
+	ExecArgs    []string
 	ContentType string
 }
 
@@ -22,7 +25,7 @@ type Collector struct {
 func GetCollector(app string) (*Collector, error) {
 	collectors, err := LoadCollectors()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not load collectors: %w", err)
 	}
 	for _, collector := range collectors {
 		if collector.Name == app {
@@ -41,7 +44,7 @@ func LoadCollectorsFromDirectory(directory string) ([]*Collector, error) {
 	paths, err := os.ReadDir(directory)
 	if err != nil {
 		slog.Error("could not detect collectors", slog.String("path", directory), slog.Any("err", err))
-		return collectors, err
+		return collectors, fmt.Errorf("could not detect collectors: %w", err)
 	}
 
 	for _, file := range paths {
@@ -52,15 +55,27 @@ func LoadCollectorsFromDirectory(directory string) ([]*Collector, error) {
 		}
 		var data ini.Section = ini.Data()["collector"]
 
-		missingKeys := false
-		for _, key := range []string{"name", "version", "exec", "content-type"} {
+		malformed := false
+		for _, key := range []string{"name", "version", "env", "exec", "content-type"} {
 			if _, ok := data[key]; !ok {
-				slog.Error("collector is missing key-value pair", slog.String("key", key), slog.String("path", file.Name()))
-				missingKeys = true
+				slog.Error("collector is missing key-value pair", slog.String("file", file.Name()), slog.String("key", key))
+				malformed = true
 			}
 		}
 
-		if missingKeys {
+		execArgs, err := shlex.Split(data["exec"])
+		if err != nil {
+			slog.Error("collector's exec is malformed", slog.Any("error", err))
+			malformed = true
+		}
+
+		envKeys, err := shlex.Split(data["env"])
+		if err != nil {
+			slog.Error("collector's environment is malformed", slog.Any("error", err))
+			malformed = true
+		}
+
+		if malformed {
 			slog.Debug("skipping malformed collector", slog.String("file", file.Name()))
 			continue
 		}
@@ -70,7 +85,9 @@ func LoadCollectorsFromDirectory(directory string) ([]*Collector, error) {
 			&Collector{
 				Name:        data["name"],
 				Version:     data["version"],
-				Exec:        data["exec"],
+				Env:         envKeys,
+				Exec:        execArgs[0],
+				ExecArgs:    execArgs[1:],
 				ContentType: data["content-type"],
 			},
 		)

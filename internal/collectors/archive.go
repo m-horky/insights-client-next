@@ -1,4 +1,4 @@
-package core
+package collectors
 
 import (
 	"fmt"
@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/google/shlex"
 	"github.com/google/uuid"
@@ -32,7 +33,7 @@ func NewEmptyArchive() (*Archive, error) {
 	id, err := uuid.NewUUID()
 	if err != nil {
 		slog.Error("could not generate UUID for archive", slog.Any("error", err))
-		return nil, err
+		return nil, fmt.Errorf("could not generate UUID for archive: %w", err)
 	}
 
 	path := filepath.Join(base, "insights-client-"+id.String())
@@ -40,7 +41,7 @@ func NewEmptyArchive() (*Archive, error) {
 	err = os.Mkdir(path, 0o600)
 	if err != nil {
 		slog.Error("could not create a directory for archive", slog.Any("error", err))
-		return nil, err
+		return nil, fmt.Errorf("could not create a directory for archive: %w", err)
 	}
 
 	archive := Archive{Path: filepath.Join(path, "archive"), ContentType: ""}
@@ -53,44 +54,51 @@ func NewEmptyArchive() (*Archive, error) {
 func NewArchive(collector Collector) (*Archive, error) {
 	archive, err := NewEmptyArchive()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not create empty archive: %w", err)
 	}
 	archive.ContentType = collector.ContentType
-
-	slog.Debug("asking for archive", slog.String("command", collector.Exec))
 
 	command, err := shlex.Split(collector.Exec)
 	if err != nil {
 		slog.Error("could not parse collector command", slog.Any("error", err))
 		_ = archive.Delete()
-		return nil, err
+		return nil, fmt.Errorf("could not parse collector command: %w", err)
 	}
 
 	cmd := exec.Command(command[0], command[1:]...)
 
+	collectorEnvVars := append(collector.Env, fmt.Sprintf("ARCHIVE_PATH=%s", archive.Path))
 	for _, variable := range os.Environ() {
 		cmd.Env = append(cmd.Env, variable)
 	}
-	cmd.Env = append(cmd.Env, fmt.Sprintf("ARCHIVE_PATH=%s", archive.Path))
+	for _, variable := range collectorEnvVars {
+		cmd.Env = append(cmd.Env, variable)
+	}
 
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
 		slog.Error("could not capture stdout", slog.Any("error", err))
 		_ = archive.Delete()
-		return nil, err
+		return nil, fmt.Errorf("could not capture stdout: %w", err)
 	}
 	stderrPipe, err := cmd.StderrPipe()
 	if err != nil {
 		slog.Error("could not capture stderr", slog.Any("error", err))
 		_ = archive.Delete()
-		return nil, err
+		return nil, fmt.Errorf("could not capture stderr: %w", err)
 	}
 
+	slog.Debug(
+		"asking for archive",
+		slog.String("executable", collector.Exec),
+		slog.String("arguments", strings.Join(collector.ExecArgs, " ")),
+		slog.String("custom collector environment", strings.Join(collectorEnvVars, " ")),
+	)
 	err = cmd.Start()
 	if err != nil {
-		slog.Error("could not start command", slog.Any("error", err))
+		slog.Error("could not run collector", slog.Any("error", err))
 		_ = archive.Delete()
-		return nil, err
+		return nil, fmt.Errorf("could not run collector: %w", err)
 	}
 	stdout, err := io.ReadAll(stdoutPipe)
 	if err != nil {
@@ -101,14 +109,14 @@ func NewArchive(collector Collector) (*Archive, error) {
 		slog.Warn("could not read stderr", slog.Any("error", err))
 	}
 	if err = cmd.Wait(); err != nil {
-		slog.Warn(
+		slog.Error(
 			"archive was not created",
 			slog.Any("error", err.Error()),
 			slog.String("stdout", string(stdout)),
 			slog.String("stderr", string(stderr)),
 		)
 		_ = archive.Delete()
-		return nil, err
+		return nil, fmt.Errorf("could not create archive: %w", err)
 	}
 	slog.Debug(
 		"archive created",

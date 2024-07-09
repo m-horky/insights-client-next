@@ -3,14 +3,14 @@ package actions
 import (
 	"fmt"
 
+	"github.com/m-horky/insights-client-next/internal/collectors"
 	"github.com/m-horky/insights-client-next/internal/constants"
-	"github.com/m-horky/insights-client-next/internal/core"
 )
 
 func PrintVersion() error {
 	fmt.Printf("Insights Client: %s\n", constants.Version)
 
-	collectors, err := core.LoadCollectors()
+	collectors, err := collectors.LoadCollectors()
 	if err != nil {
 		fmt.Printf("Error: could not load collectors: %s", err.Error())
 		return err

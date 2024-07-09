@@ -9,9 +9,9 @@ import (
 	"github.com/urfave/cli/v3"
 
 	"github.com/m-horky/insights-client-next/cmd/insights-client/actions"
+	"github.com/m-horky/insights-client-next/internal/collectors"
 	"github.com/m-horky/insights-client-next/internal/configuration"
 	"github.com/m-horky/insights-client-next/internal/constants"
-	"github.com/m-horky/insights-client-next/internal/core"
 	"github.com/m-horky/insights-client-next/internal/enums"
 	"github.com/m-horky/insights-client-next/internal/system"
 )
@@ -49,7 +49,7 @@ func main() {
 				Category: "data collection",
 				Usage:    "run collector",
 				Action: func(ctx context.Context, command *cli.Command, collector string) error {
-					if _, err := core.GetCollector(collector); err != nil {
+					if _, err := collectors.GetCollector(collector); err != nil {
 						fmt.Printf("Error: invalid collector: '%s'\n", collector)
 						return err
 					}

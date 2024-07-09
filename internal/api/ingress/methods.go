@@ -13,12 +13,12 @@ import (
 	"path/filepath"
 
 	"github.com/m-horky/insights-client-next/internal/api"
-	"github.com/m-horky/insights-client-next/internal/core"
+	"github.com/m-horky/insights-client-next/internal/collectors"
 )
 
 var service = api.NewService("api/ingress/v1")
 
-func UploadArchive(archive core.Archive) (*Uploaded, error) {
+func UploadArchive(archive collectors.Archive) (*Uploaded, error) {
 	formData := new(bytes.Buffer)
 	form := multipart.NewWriter(formData)
 
@@ -32,20 +32,20 @@ func UploadArchive(archive core.Archive) (*Uploaded, error) {
 	archiveField, err := form.CreatePart(archiveHeader)
 	if err != nil {
 		slog.Error("could not create archive field", slog.Any("error", err))
-		return nil, err
+		return nil, fmt.Errorf("could not create archive field: %w", err)
 	}
 
 	archiveDescriptor, err := os.Open(archive.Path)
 	if err != nil {
 		slog.Error("could not open archive file", slog.Any("error", err))
-		return nil, err
+		return nil, fmt.Errorf("could not open archive file: %w", err)
 	}
 	defer archiveDescriptor.Close()
 
 	_, err = io.Copy(archiveField, archiveDescriptor)
 	if err != nil {
 		slog.Error("could not load archive file", slog.Any("error", err))
-		return nil, err
+		return nil, fmt.Errorf("could not load archive file: %w", err)
 	}
 
 	form.Close()
@@ -57,7 +57,7 @@ func UploadArchive(archive core.Archive) (*Uploaded, error) {
 	response, err := service.MakeRequest("POST", "upload", params, headers, formData)
 	if err != nil {
 		slog.Error("could not upload archive", slog.Any("error", err))
-		return nil, err
+		return nil, fmt.Errorf("could not upload archive: %w", err)
 	}
 
 	if response.Code/100 != 2 {
@@ -68,7 +68,7 @@ func UploadArchive(archive core.Archive) (*Uploaded, error) {
 	var uploaded Uploaded
 	if err = json.Unmarshal(response.Data, &uploaded); err != nil {
 		slog.Error("could not unmarshal response", slog.Any("error", err), slog.Any("raw response", response.Data))
-		return nil, err
+		return nil, fmt.Errorf("could not unmarshal response: %w", err)
 	}
 
 	return &uploaded, nil

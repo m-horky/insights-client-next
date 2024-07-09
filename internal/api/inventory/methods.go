@@ -21,13 +21,13 @@ func GetHost(insightsClientID string) (*Host, error) {
 	response, err := service.MakeRequest("GET", "hosts", params, map[string][]string{}, nil)
 	if err != nil {
 		slog.Error("could not contact HBI", slog.String("error", err.Error()))
-		return nil, err
+		return nil, fmt.Errorf("could not contact HBI: %w", err)
 	}
 
 	var hosts Hosts
 	if err = json.Unmarshal(response.Data, &hosts); err != nil {
 		slog.Error("could not unmarshal response", slog.String("error", err.Error()))
-		return nil, err
+		return nil, fmt.Errorf("could not unmarshal response: %w", err)
 	}
 	if len(hosts.Results) == 0 {
 		slog.Debug("HBI returned no hosts", slog.String("response", string(response.Data)))
@@ -49,8 +49,8 @@ func UpdateDisplayName(insightsInventoryID, displayName string) error {
 
 	body, err := json.Marshal(map[string]string{"display_name": displayName})
 	if err != nil {
-		slog.Error("could not encode payload", slog.String("error", err.Error()))
-		return err
+		slog.Error("could not encode payload", slog.Any("error", err))
+		return fmt.Errorf("could not encode payload: %w", err)
 	}
 
 	response, err := service.MakeRequest(
@@ -61,8 +61,8 @@ func UpdateDisplayName(insightsInventoryID, displayName string) error {
 		bytes.NewBuffer(body),
 	)
 	if err != nil {
-		slog.Error("could not contact HBI", slog.String("error", err.Error()))
-		return err
+		slog.Error("could not contact HBI", slog.Any("error", err))
+		return fmt.Errorf("could not contact HBI: %w", err)
 	}
 
 	if response.Code != 200 {
