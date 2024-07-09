@@ -26,7 +26,7 @@ func (s *Service) MakeRequest(
 	parameters url.Values,
 	headers map[string][]string,
 	body *bytes.Buffer,
-) (Response, error) {
+) (*Response, error) {
 	config := configuration.GetConfiguration()
 
 	fullUrl := fmt.Sprintf("%s://%s:%d/%s/%s?%s",
@@ -37,7 +37,7 @@ func (s *Service) MakeRequest(
 	req, err := http.NewRequest(method, fullUrl, body)
 	if err != nil {
 		slog.Error("could not construct request", slog.Any("error", err))
-		return Response{}, err
+		return nil, err
 	}
 
 	for key, value := range headers {
@@ -51,7 +51,7 @@ func (s *Service) MakeRequest(
 	client, err := NewAuthenticatedClient(config.IdentityCertificate, config.IdentityKey)
 	if err != nil {
 		slog.Error("could not create client", slog.Any("error", err))
-		return Response{}, err
+		return nil, err
 	}
 
 	slog.Debug(
@@ -64,7 +64,7 @@ func (s *Service) MakeRequest(
 	delta := time.Since(now)
 	if err != nil {
 		slog.Error("could not send request", slog.Any("error", err))
-		return Response{}, err
+		return nil, err
 	}
 	slog.Debug(
 		"response received",
@@ -76,9 +76,9 @@ func (s *Service) MakeRequest(
 	response, err := io.ReadAll(resp.Body)
 	if err != nil {
 		slog.Error("could not read response", slog.Any("error", err))
-		return Response{}, err
+		return nil, err
 	}
 
 	// TODO Is it smart to load everything into memory?
-	return Response{Code: resp.StatusCode, Data: response}, nil
+	return &Response{Code: resp.StatusCode, Data: response}, nil
 }

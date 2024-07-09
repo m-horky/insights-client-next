@@ -25,14 +25,14 @@ func RunCollector(collectorName string) error {
 	//}
 
 	slog.Info("collecting archive")
-	archive, err := core.NewArchive(collector)
+	archive, err := core.NewArchive(*collector)
 	if err != nil {
 		fmt.Printf("Error: could not create archive: %s\n", err.Error())
 		return err
 	}
 
 	slog.Info("uploading archive")
-	_, err = ingress.UploadArchive(archive)
+	_, err = ingress.UploadArchive(*archive)
 	if err != nil {
 		slog.Error("could not upload archive", slog.Any("error", err))
 	}

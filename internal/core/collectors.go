@@ -19,25 +19,25 @@ type Collector struct {
 }
 
 // GetCollector looks for a collector defined on a system.
-func GetCollector(app string) (Collector, error) {
+func GetCollector(app string) (*Collector, error) {
 	collectors, err := LoadCollectors()
 	if err != nil {
-		return Collector{}, err
+		return nil, err
 	}
 	for _, collector := range collectors {
 		if collector.Name == app {
 			return collector, nil
 		}
 	}
-	return Collector{}, fmt.Errorf("unknown collector: %s", app)
+	return nil, fmt.Errorf("unknown collector: %s", app)
 }
 
-func LoadCollectors() ([]Collector, error) {
+func LoadCollectors() ([]*Collector, error) {
 	return LoadCollectorsFromDirectory(constants.CollectorsDirectory)
 }
 
-func LoadCollectorsFromDirectory(directory string) ([]Collector, error) {
-	var collectors []Collector
+func LoadCollectorsFromDirectory(directory string) ([]*Collector, error) {
+	var collectors []*Collector
 	paths, err := os.ReadDir(directory)
 	if err != nil {
 		slog.Error("could not detect collectors", slog.String("path", directory), slog.Any("err", err))
@@ -67,7 +67,7 @@ func LoadCollectorsFromDirectory(directory string) ([]Collector, error) {
 
 		collectors = append(
 			collectors,
-			Collector{
+			&Collector{
 				Name:        data["name"],
 				Version:     data["version"],
 				Exec:        data["exec"],

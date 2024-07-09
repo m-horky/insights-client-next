@@ -26,13 +26,13 @@ func (a Archive) Delete() error {
 }
 
 // NewEmptyArchive creates a directory into which the archive should be placed.
-func NewEmptyArchive() (Archive, error) {
+func NewEmptyArchive() (*Archive, error) {
 	base := "/var/tmp/"
 
 	id, err := uuid.NewUUID()
 	if err != nil {
 		slog.Error("could not generate UUID for archive", slog.Any("error", err))
-		return Archive{}, err
+		return nil, err
 	}
 
 	path := filepath.Join(base, "insights-client-"+id.String())
@@ -40,20 +40,20 @@ func NewEmptyArchive() (Archive, error) {
 	err = os.Mkdir(path, 0o600)
 	if err != nil {
 		slog.Error("could not create a directory for archive", slog.Any("error", err))
-		return Archive{}, err
+		return nil, err
 	}
 
 	archive := Archive{Path: filepath.Join(path, "archive"), ContentType: ""}
 	slog.Debug("created a directory for archive", slog.String("path", path))
 
-	return archive, nil
+	return &archive, nil
 }
 
 // NewArchive asks a collector to create an archive.
-func NewArchive(collector Collector) (Archive, error) {
+func NewArchive(collector Collector) (*Archive, error) {
 	archive, err := NewEmptyArchive()
 	if err != nil {
-		return Archive{}, err
+		return nil, err
 	}
 	archive.ContentType = collector.ContentType
 
@@ -63,7 +63,7 @@ func NewArchive(collector Collector) (Archive, error) {
 	if err != nil {
 		slog.Error("could not parse collector command", slog.Any("error", err))
 		_ = archive.Delete()
-		return Archive{}, err
+		return nil, err
 	}
 
 	cmd := exec.Command(command[0], command[1:]...)
@@ -77,20 +77,20 @@ func NewArchive(collector Collector) (Archive, error) {
 	if err != nil {
 		slog.Error("could not capture stdout", slog.Any("error", err))
 		_ = archive.Delete()
-		return Archive{}, err
+		return nil, err
 	}
 	stderrPipe, err := cmd.StderrPipe()
 	if err != nil {
 		slog.Error("could not capture stderr", slog.Any("error", err))
 		_ = archive.Delete()
-		return Archive{}, err
+		return nil, err
 	}
 
 	err = cmd.Start()
 	if err != nil {
 		slog.Error("could not start command", slog.Any("error", err))
 		_ = archive.Delete()
-		return Archive{}, err
+		return nil, err
 	}
 	stdout, err := io.ReadAll(stdoutPipe)
 	if err != nil {
@@ -108,7 +108,7 @@ func NewArchive(collector Collector) (Archive, error) {
 			slog.String("stderr", string(stderr)),
 		)
 		_ = archive.Delete()
-		return Archive{}, err
+		return nil, err
 	}
 	slog.Debug(
 		"archive created",
