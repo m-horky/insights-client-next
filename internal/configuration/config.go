@@ -75,7 +75,7 @@ func (c *Configuration) update(data map[string]string) {
 func GetDefaultConfiguration() Configuration {
 	return Configuration{
 		APIProtocol:         "https",
-		APIHost:             "cert.cloud.redhat.com",
+		APIHost:             "cert.console.redhat.com",
 		APIPort:             443,
 		HTTPTimeout:         120 * time.Second,
 		LogLevel:            slog.LevelDebug,
