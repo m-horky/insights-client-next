@@ -77,10 +77,12 @@ func main() {
 		Action: run,
 	}
 
+	slog.Debug("program started", slog.Any("args", os.Args))
 	if err := cmd.Run(context.Background(), os.Args); err != nil {
-		slog.Error("crashed", slog.Any("error", err))
+		slog.Error("program crashed", slog.Any("error", err))
 		os.Exit(1)
 	}
+	slog.Debug("program finished")
 }
 
 // run acts as an action router.
