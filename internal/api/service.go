@@ -21,8 +21,11 @@ func NewService(apiPath string) Service {
 }
 
 func (s *Service) MakeRequest(
-	method, endpoint string, parameters url.Values,
-	headers map[string][]string, body []byte,
+	method,
+	endpoint string,
+	parameters url.Values,
+	headers map[string][]string,
+	body *bytes.Buffer,
 ) (Response, error) {
 	config := configuration.GetConfiguration()
 
@@ -31,7 +34,7 @@ func (s *Service) MakeRequest(
 		s.apiPath, endpoint, parameters.Encode(),
 	)
 
-	req, err := http.NewRequest(method, fullUrl, bytes.NewBuffer(body))
+	req, err := http.NewRequest(method, fullUrl, body)
 	if err != nil {
 		slog.Error("could not construct request", slog.Any("error", err))
 		return Response{}, err

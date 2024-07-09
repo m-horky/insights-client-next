@@ -1,6 +1,7 @@
 package inventory
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -17,7 +18,7 @@ func GetHost(insightsClientID string) (Host, error) {
 
 	params := url.Values{}
 	params.Set("insights_id", insightsClientID)
-	response, err := service.MakeRequest("GET", "hosts", params, map[string][]string{}, []byte{})
+	response, err := service.MakeRequest("GET", "hosts", params, map[string][]string{}, nil)
 	if err != nil {
 		slog.Error("could not contact HBI", slog.String("error", err.Error()))
 		return Host{}, err
@@ -57,7 +58,7 @@ func UpdateDisplayName(insightsInventoryID, displayName string) error {
 		fmt.Sprintf("hosts/%s", insightsInventoryID),
 		url.Values{},
 		map[string][]string{"Content-Type": {"application/json"}},
-		body,
+		bytes.NewBuffer(body),
 	)
 	if err != nil {
 		slog.Error("could not contact HBI", slog.String("error", err.Error()))
