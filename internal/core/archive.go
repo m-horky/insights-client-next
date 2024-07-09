@@ -42,7 +42,11 @@ func NewEmptyArchive() (Archive, error) {
 		slog.Error("could not create a directory for archive", slog.Any("error", err))
 		return Archive{}, err
 	}
-	return Archive{Path: filepath.Join(path, "archive"), ContentType: ""}, nil
+
+	archive := Archive{Path: filepath.Join(path, "archive"), ContentType: ""}
+	slog.Debug("created a directory for archive", slog.String("path", path))
+
+	return archive, nil
 }
 
 // NewArchive asks a collector to create an archive.
@@ -53,31 +57,21 @@ func NewArchive(collector Collector) (Archive, error) {
 	}
 	archive.ContentType = collector.ContentType
 
-	envvars := map[string]string{
-		"ARCHIVE_PATH": archive.Path,
-		"PYTHONPATH":   os.Getenv("PYTHONPATH"),
-	}
+	slog.Debug("asking for archive", slog.String("command", collector.Exec))
 
-	slog.Debug(
-		"asking for archive",
-		slog.String(
-			"command",
-			fmt.Sprintf(
-				"ARCHIVE_PATH=%s PYTHONPATH=%s %s",
-				envvars["ARCHIVE_PATH"], envvars["PYTHONPATH"], collector.Exec,
-			),
-		),
-	)
 	command, err := shlex.Split(collector.Exec)
 	if err != nil {
 		slog.Error("could not parse collector command", slog.Any("error", err))
 		_ = archive.Delete()
 		return Archive{}, err
 	}
+
 	cmd := exec.Command(command[0], command[1:]...)
-	for k, v := range envvars {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
+
+	for _, variable := range os.Environ() {
+		cmd.Env = append(cmd.Env, variable)
 	}
+	cmd.Env = append(cmd.Env, fmt.Sprintf("ARCHIVE_PATH=%s", archive.Path))
 
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
