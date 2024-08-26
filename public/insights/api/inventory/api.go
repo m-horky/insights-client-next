@@ -82,6 +82,23 @@ func GetHost(insightsClientID string) (*Host, error) {
 	return &hosts.Results[0], nil
 }
 
+// DeleteHost deletes the host record from Inventory.
+func DeleteHost(insightsInventoryID string) error {
+	slog.Debug("deleting HBI host")
+
+	response, err := service.MakeRequest("DELETE", fmt.Sprintf("hosts/%s", insightsInventoryID), url.Values{}, make(map[string][]string), nil)
+	if err != nil {
+		slog.Error("could not contact HBI", slog.String("error", err.Error()))
+		return fmt.Errorf("could not contact HBI: %w", err)
+	}
+
+	if response.Code != 200 {
+		slog.Error("could not unregister host", slog.Any("raw response", response.Data))
+		return fmt.Errorf("could not unregister host, received %d", response.Code)
+	}
+	return nil
+}
+
 // UpdateDisplayName changes the name of the host displayed in Inventory.
 func UpdateDisplayName(insightsInventoryID, displayName string) error {
 	slog.Debug("updating HBI host's display name", slog.String("new name", displayName))
