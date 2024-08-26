@@ -1,5 +1,6 @@
 package inventory
 
+// Hosts object is returned by Inventory `/hosts/` endpoint.
 type Hosts struct {
 	Total   uint64 `json:"total"`
 	Count   uint64 `json:"count"`
@@ -8,6 +9,7 @@ type Hosts struct {
 	Results []Host `json:"results"`
 }
 
+// Host object is contained in Hosts object.
 type Host struct {
 	InsightsInventoryID   string   `json:"id"`
 	InsightsClientID      string   `json:"insights_id"`
@@ -26,6 +28,7 @@ type Host struct {
 	Tags                  []any    `json:"tags"`
 }
 
+// HostID object is returned by Inventory `/host_exists` endpoint.
 type HostID struct {
 	InsightsInventoryID string `json:"id"`
 }

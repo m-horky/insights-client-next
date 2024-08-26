@@ -14,15 +14,17 @@ import (
 var service = api.NewService("api/inventory/v1")
 
 // Exists returns an Inventory ID if there is exactly one host record that matches Insights Client ID.
+//
 // Error is returned if there is no host, or if there are multiple hosts present (which may happen due
 // to host duplication issues Inventory has suffered from).
+//
+// This endpoint does not yet exist in production at the time of writing this implementation.
 func Exists(insightsClientID string) (*HostID, error) {
 	slog.Debug("querying HBI for a host")
 
-	params := url.Values{}
-	params.Set("insights_id", insightsClientID)
+	params := url.Values{"insights_id": []string{insightsClientID}}
 
-	response, err := service.MakeRequest("GET", "host_exists", params, map[string][]string{}, nil)
+	response, err := service.MakeRequest("GET", "host_exists", params, make(map[string][]string), nil)
 	if err != nil {
 		slog.Error("could not contact HBI", slog.String("error", err.Error()))
 		return nil, fmt.Errorf("could not contact HBI: %w", err)
@@ -49,6 +51,7 @@ func Exists(insightsClientID string) (*HostID, error) {
 }
 
 // GetHost returns full host record from Inventory.
+//
 // Error is returned if there is no host, the first host is returned if there are multiple hosts present.
 func GetHost(insightsClientID string) (*Host, error) {
 	slog.Debug("querying HBI for a host")
@@ -79,7 +82,7 @@ func GetHost(insightsClientID string) (*Host, error) {
 	return &hosts.Results[0], nil
 }
 
-// UpdateDisplayName changes the name displayed in Inventory.
+// UpdateDisplayName changes the name of the host displayed in Inventory.
 func UpdateDisplayName(insightsInventoryID, displayName string) error {
 	slog.Debug("updating HBI host's display name", slog.String("new name", displayName))
 

@@ -109,7 +109,7 @@ func getConfigurationFromPath(path string) Configuration {
 	return config
 }
 
-// expandConfigurationPath expands `path` to all files under `path.d/`.
+// expandConfigurationPath expands `.../path.conf` to also include all files under `.../path.conf.d/`.
 func expandConfigurationPath(path string) []string {
 	dir := fmt.Sprintf("%s.d", path)
 	stat, err := os.Stat(dir)

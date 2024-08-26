@@ -12,14 +12,25 @@ import (
 	"github.com/m-horky/insights-client-next/internal/app"
 )
 
+// Service is a representation of an API service.
+//
+// To create an instance, use NewService.
 type Service struct {
 	apiPath string
 }
 
+// NewService creates an instance of Service.
+//
+// When making a connection, the API path is appended to the URL.
+// It should be in a form of `api/v1/NAME`, without leading or trailing slashes.
 func NewService(apiPath string) Service {
 	return Service{apiPath: apiPath}
 }
 
+// MakeRequest sends a request to a relevant service.
+//
+// This method uses RHSM certificates to authenticate to the server.
+// Unless present, the `Accept` header is set to `application/json`.
 func (s *Service) MakeRequest(
 	method,
 	endpoint string,
