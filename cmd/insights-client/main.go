@@ -91,15 +91,17 @@ func verifyFormat(_ context.Context, _ *cli.Command, format string) error {
 }
 
 type Arguments struct {
-	Register      bool
-	Unregister    bool
-	Status        bool
-	DisplayName   string
-	AnsibleHost   string
-	Collector     string
-	CollectorList bool
-	Help          bool
-	Format        app.Format
+	Register         bool
+	Unregister       bool
+	Status           bool
+	DisplayName      string
+	ResetDisplayName bool
+	AnsibleHost      string
+	ResetAnsibleHost bool
+	Collector        string
+	CollectorList    bool
+	Help             bool
+	Format           app.Format
 }
 
 // parseCLI converts the cli.Command object into a clean structure.
@@ -136,8 +138,16 @@ func parseCLI(cmd *cli.Command) (*Arguments, error) {
 		arguments.DisplayName = cmd.String("display-name")
 		return arguments, nil
 	}
+	if cmd.IsSet("display-name") {
+		arguments.ResetDisplayName = true
+		return arguments, nil
+	}
 	if cmd.String("ansible-host") != "" {
 		arguments.AnsibleHost = cmd.String("ansible-host")
+		return arguments, nil
+	}
+	if cmd.IsSet("ansible-host") {
+		arguments.ResetAnsibleHost = true
 		return arguments, nil
 	}
 
@@ -171,6 +181,73 @@ func runCLI(ctx context.Context, cmd *cli.Command) error {
 		return nil
 	}
 
-	fmt.Println("Error: not implemented")
+	// ask for elevated privileges
+	if os.Geteuid() != 0 {
+		fmt.Println("Error: This command has to be run with superuser privileges.")
+		return fmt.Errorf("this command has to be run with superuser privileges")
+	}
+
+	// handle commands
+	if arguments.DisplayName != "" || arguments.ResetDisplayName {
+		host, err := api.GetCurrentInventoryHost()
+		if err != nil {
+			fmt.Println("Error: could not get current inventory host.")
+			return err
+		}
+
+		displayName := arguments.DisplayName
+		if arguments.ResetDisplayName {
+			displayName, err = os.Hostname()
+			if err != nil {
+				fmt.Printf("Error: Could not reset display name.")
+				slog.Error("could not determine hostname", slog.String("error", err.Error()))
+				return err
+			}
+		}
+
+		err = inventory.UpdateDisplayName(host.InsightsInventoryID, displayName)
+		if err != nil {
+			fmt.Println("Error: Could not update display name.")
+			return err
+		}
+		if arguments.ResetDisplayName {
+			fmt.Println("Notice: Display name reset.")
+		} else {
+			fmt.Println("Notice: Display name updated.")
+		}
+		return nil
+	}
+
+	if arguments.AnsibleHost != "" || arguments.ResetAnsibleHost {
+		host, err := api.GetCurrentInventoryHost()
+		if err != nil {
+			fmt.Println("Error: Could not get current Inventory host.")
+			return err
+		}
+
+		ansibleHostname := arguments.AnsibleHost
+		if arguments.ResetAnsibleHost {
+			ansibleHostname, err = os.Hostname()
+			if err != nil {
+				fmt.Printf("Error: Could not reset Ansible hostname.")
+				slog.Error("could not determine hostname", slog.String("error", err.Error()))
+				return err
+			}
+		}
+
+		err = inventory.UpdateAnsibleHostname(host.InsightsInventoryID, ansibleHostname)
+		if err != nil {
+			fmt.Println("Error: Could not update Ansible hostname.")
+			return err
+		}
+		if arguments.ResetAnsibleHost {
+			fmt.Println("Notice: Ansible hostname reset.")
+		} else {
+			fmt.Println("Notice: Ansible hostname updated.")
+		}
+		return nil
+	}
+
+	fmt.Println("Error: Not implemented.")
 	return fmt.Errorf("not implemented")
 }
