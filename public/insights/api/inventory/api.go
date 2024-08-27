@@ -70,6 +70,10 @@ func GetHost(insightsClientID string) (*Host, error) {
 		return nil, fmt.Errorf("could not contact HBI: %w", err)
 	}
 
+	if response.Code != 200 {
+		slog.Error("HBI request failed", slog.String("raw response", string(response.Data)))
+	}
+
 	var hosts Hosts
 	if err = json.Unmarshal(response.Data, &hosts); err != nil {
 		slog.Error("could not unmarshal response", slog.String("error", err.Error()))
@@ -106,11 +110,42 @@ func DeleteHost(insightsInventoryID string) error {
 
 // UpdateDisplayName changes the name of the host displayed in Inventory.
 func UpdateDisplayName(insightsInventoryID, displayName string) error {
-	slog.Debug("updating HBI host's display name", slog.String("new name", displayName))
+	slog.Debug("updating HBI host's display name", slog.String("name", displayName))
 
 	endpoint := fmt.Sprintf("hosts/%s", insightsInventoryID)
 
 	body, err := json.Marshal(map[string]string{"display_name": displayName})
+	if err != nil {
+		slog.Error("could not encode payload", slog.String("error", err.Error()))
+		return fmt.Errorf("could not encode payload: %w", err)
+	}
+
+	response, err := service.MakeRequest(
+		"PATCH",
+		endpoint,
+		url.Values{},
+		map[string][]string{"Content-Type": {"application/json"}},
+		bytes.NewBuffer(body),
+	)
+	if err != nil {
+		slog.Error("could not contact HBI", slog.String("error", err.Error()))
+		return fmt.Errorf("could not contact HBI: %w", err)
+	}
+
+	if response.Code != 200 {
+		slog.Error("could not update host's display name", slog.Any("raw response", response.Data))
+		return fmt.Errorf("could not update host's display name, received %d", response.Code)
+	}
+	return nil
+}
+
+// UpdateAnsibleHostname changes the name of the host displayed in Inventory.
+func UpdateAnsibleHostname(insightsInventoryID, ansibleHostname string) error {
+	slog.Debug("updating HBI host's display name", slog.String("name", ansibleHostname))
+
+	endpoint := fmt.Sprintf("hosts/%s", insightsInventoryID)
+
+	body, err := json.Marshal(map[string]string{"ansible_host": ansibleHostname})
 	if err != nil {
 		slog.Error("could not encode payload", slog.String("error", err.Error()))
 		return fmt.Errorf("could not encode payload: %w", err)
