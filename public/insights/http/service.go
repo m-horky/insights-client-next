@@ -1,4 +1,4 @@
-package api
+package http
 
 import (
 	"bytes"
@@ -16,15 +16,15 @@ import (
 //
 // To create an instance, use NewService.
 type Service struct {
-	apiPath string
+	Protocol string
+	Hostname string
+	Port     uint64
+	// Path is in a form of `api/v1/NAME`, without leading or trailing slashes.
+	Path string
 }
 
-// NewService creates an instance of Service.
-//
-// When making a connection, the API path is appended to the URL.
-// It should be in a form of `api/v1/NAME`, without leading or trailing slashes.
-func NewService(apiPath string) Service {
-	return Service{apiPath: apiPath}
+func (s *Service) String() string {
+	return fmt.Sprintf("%s://%s:%d/%s", s.Protocol, s.Hostname, s.Port, s.Path)
 }
 
 // MakeRequest sends a request to a relevant service.
@@ -40,16 +40,11 @@ func (s *Service) MakeRequest(
 ) (*Response, error) {
 	config := app.GetConfiguration()
 
-	fullUrl := fmt.Sprintf(
-		"%s://%s:%d/%s/%s?%s",
-		config.APIProtocol,
-		config.APIHost,
-		config.APIPort,
-		s.apiPath,
-		endpoint,
-		parameters.Encode(),
-	)
+	fullUrl := fmt.Sprintf("%s/%s?%s", s, endpoint, parameters.Encode())
 
+	if body == nil {
+		body = bytes.NewBuffer(nil)
+	}
 	req, err := http.NewRequest(method, fullUrl, body)
 	if err != nil {
 		slog.Error("could not construct request", slog.String("error", err.Error()))

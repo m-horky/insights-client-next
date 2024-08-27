@@ -12,10 +12,15 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/m-horky/insights-client-next/internal/api"
+	"github.com/m-horky/insights-client-next/public/insights/http"
 )
 
-var service = api.NewService("api/ingress/v1")
+var service http.Service
+
+// Init has to be called to set up the API configuration for the service.
+func Init(s *http.Service) {
+	service = *s
+}
 
 // UploadArchive loads an archive from filesystem and uploads it to Ingress.
 func UploadArchive(archive Archive) (*Uploaded, error) {

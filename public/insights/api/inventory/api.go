@@ -8,10 +8,15 @@ import (
 	"log/slog"
 	"net/url"
 
-	"github.com/m-horky/insights-client-next/internal/api"
+	"github.com/m-horky/insights-client-next/public/insights/http"
 )
 
-var service = api.NewService("api/inventory/v1")
+var service http.Service
+
+// Init has to be called to set up the API configuration for the service.
+func Init(s *http.Service) {
+	service = *s
+}
 
 // Exists returns an Inventory ID if there is exactly one host record that matches Insights Client ID.
 //
