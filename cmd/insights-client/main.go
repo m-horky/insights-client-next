@@ -8,23 +8,46 @@ import (
 
 	"github.com/urfave/cli/v3"
 
+	"github.com/m-horky/insights-client-next/internal/api"
 	"github.com/m-horky/insights-client-next/internal/app"
 	"github.com/m-horky/insights-client-next/public/collectors"
+	"github.com/m-horky/insights-client-next/public/insights/api/inventory"
 )
 
 func init() {
-	// TODO Write to log file instead.
-	// TODO Include file in the log statement.
-	// TODO For --verbose, pretty-print to stderr?
-	slog.SetDefault(slog.New(slog.NewTextHandler(
-		os.Stderr, &slog.HandlerOptions{Level: app.GetConfiguration().LogLevel},
-	)))
+	initLogging()
+	initCli()
+}
 
+func initLogging() {
+	debug := false
+	for _, arg := range os.Args {
+		if arg == "--debug" {
+			debug = true
+			break
+		}
+	}
+
+	if debug {
+		slog.SetDefault(slog.New(app.NewColorHandler(
+			os.Stderr, &slog.HandlerOptions{AddSource: true, Level: app.GetConfiguration().LogLevel},
+		)))
+	} else {
+		fp, err := os.OpenFile(app.LogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			panic(err.Error())
+		}
+		slog.SetDefault(slog.New(app.NewFileHandler(
+			fp, &slog.HandlerOptions{AddSource: true, Level: app.GetConfiguration().LogLevel},
+		)))
+	}
+}
+
+func initCli() {
 	cli.HelpFlag = &cli.BoolFlag{Name: "help"}
 	cli.VersionFlag = &cli.BoolFlag{Name: "version"}
 	cli.VersionPrinter = func(cmd *cli.Command) {
 		fmt.Println("insights-client", app.Version)
-
 		for _, collector := range collectors.GetCollectors() {
 			fmt.Printf("* %s %s\n", collector.Name, collector.Version)
 		}
@@ -34,7 +57,7 @@ func init() {
 func main() {
 	cmd := buildCLI()
 
-	slog.Debug("program started", slog.Any("args", os.Args))
+	slog.Debug("started", slog.Any("args", os.Args))
 	if err := cmd.Run(context.Background(), os.Args); err != nil {
 		slog.Error("finished", slog.String("error", err.Error()))
 		os.Exit(1)
@@ -68,7 +91,8 @@ func buildCLI() *cli.Command {
 			&cli.BoolFlag{Name: "compliance", Category: "deprecated", Usage: "alias for '--collector compliance'"},
 
 			// flags
-			&cli.StringFlag{Name: "format", Category: "global flags", Value: "human", Action: verifyFormat},
+			&cli.StringFlag{Name: "format", Category: "global flags", Value: "human", Action: verifyFormat, Usage: "change output format"},
+			&cli.BoolFlag{Name: "debug", Category: "global flags", Usage: "print logs to stderr instead of a log file"},
 		},
 		Action: runCLI,
 	}
@@ -113,10 +137,10 @@ func parseCLI(cmd *cli.Command) (*Arguments, error) {
 
 	// display deprecation notices
 	if cmd.Bool("test-connection") {
-		fmt.Println("Notice: command 'test-connection' is deprecated and will be removed in future releases. Use 'status' instead.")
+		fmt.Println("Warning: command 'test-connection' is deprecated and will be removed in future releases. Use 'status' instead.")
 	}
 	if cmd.Bool("compliance") {
-		fmt.Println("Notice: command 'compliance' is deprecated and will be removed in future releases. Use '--collector compliance' instead.")
+		fmt.Println("Warning: command 'compliance' is deprecated and will be removed in future releases. Use '--collector compliance' instead.")
 	}
 
 	// client

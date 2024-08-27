@@ -12,6 +12,29 @@ make check
 gitleaks detect --verbose
 ```
 
+## Logging and output best practices
+
+To keep the program output under control, we have a best practices we try to follow when it comes to outputting text or logs.
+
+For output:
+
+- Include prefix
+  - `Notice` for informational messages (e.g. `Notice: Ansible hostname updated.`)
+  - `Warning` for handled errors (e.g. `Warning: Command 'foo' is deprecated, use 'bar' instead.`)
+  - `Error` for fatal errors preventing further runtime (e.g. `Error: Could not run collection.`)
+- Start the sentence with a capital letter.
+- Do not include long explanations or internal errors. Logs are always in English and output is/will be translated into the current locale, mixing them would cause inconsistencies.
+- Do not print to standard output in `public` or `private` packages. All `fmt.Print` should be done by packages in `cmd`. 
+
+For logging:
+
+- Log errors as `slog.String("error", err.Error())`.
+- Do not log errors everywhere.
+  - Always log the first error that comes from Go stdlib or a 3rd party library.
+  - Do not add log statement for error coming from our code: it has been logged anywhere.
+  - You are allowed to do so if it provides additional context that might not be obvious from the previous log statements (e.g. API implementation in `public/insights/api` complaining about an error from generic `internal/api`).
+
+  
 ## Conventional Commits
 
 When making a contribution, follow the [Conventional Commits](https://www.conventionalcommits.org) guidelines.
