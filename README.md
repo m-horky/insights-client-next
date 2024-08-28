@@ -28,6 +28,13 @@ make build
 make check
 ```
 
+### Environment variables
+
+The use of environment variables to change the behavior should be limited and always constraint to development or testing purposes.
+All production configuration should be made via the configuration file.
+
+- `HTTP_DEBUG`: Include more detailed information about HTTP traffic (e.g. raw responses). Commonly used with `--debug`.
+
 ## Contributing
 
 This project is developed under the [MIT license](LICENSE).

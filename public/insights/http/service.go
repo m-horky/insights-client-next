@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/m-horky/insights-client-next/internal/app"
@@ -65,7 +66,12 @@ func (s *Service) MakeRequest(
 		return nil, fmt.Errorf("could not create client: %w", err)
 	}
 
-	slog.Debug("making request", slog.String("url", fullUrl), slog.Any("headers", req.Header))
+	slog.Debug("request sent", slog.String("url", fullUrl), slog.Any("headers", req.Header))
+
+	if os.Getenv("HTTP_DEBUG") != "" && body.Len() > 0 {
+		slog.Debug("request data", slog.String("payload", body.String()))
+	}
+
 	now := time.Now()
 	resp, err := client.Do(req)
 	delta := time.Since(now)
@@ -74,12 +80,20 @@ func (s *Service) MakeRequest(
 		return nil, fmt.Errorf("could not make request: %w", err)
 	}
 	defer resp.Body.Close()
-	slog.Debug("response received", slog.Int("code", resp.StatusCode), slog.Duration("rtt", delta))
+	slog.Debug(
+		"response received",
+		slog.Int("code", resp.StatusCode),
+		slog.Duration("rtt", delta),
+	)
 
 	response, err := io.ReadAll(resp.Body)
 	if err != nil {
 		slog.Error("could not read response body", slog.String("error", err.Error()))
 		return nil, fmt.Errorf("could not read response body: %w", err)
+	}
+
+	if os.Getenv("HTTP_DEBUG") != "" && len(response) > 0 {
+		slog.Debug("response data", slog.String("payload", string(response)))
 	}
 
 	return &Response{Code: resp.StatusCode, Data: response}, nil
