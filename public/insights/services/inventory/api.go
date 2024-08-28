@@ -18,6 +18,11 @@ func Init(s *http.Service) {
 	service = *s
 }
 
+var (
+	ErrNoHost    = errors.New("host does not exist")
+	ErrManyHosts = errors.New("multiple hosts exist")
+)
+
 // Exists returns an Inventory ID if there is exactly one host record that matches Insights Client ID.
 //
 // Error is returned if there is no host, or if there are multiple hosts present (which may happen due
@@ -32,23 +37,23 @@ func Exists(insightsClientID string) (*HostID, error) {
 	response, err := service.MakeRequest("GET", "host_exists", params, make(map[string][]string), nil)
 	if err != nil {
 		slog.Error("could not contact HBI", slog.String("error", err.Error()))
-		return nil, fmt.Errorf("could not contact HBI: %w", err)
+		return nil, errors.Join(http.ErrServiceUnreachable, err)
 	}
 
 	if response.Code == 404 {
 		slog.Debug("host does not exist")
-		return nil, errors.New("host does not exist")
+		return nil, ErrNoHost
 	}
 	if response.Code == 409 {
 		slog.Debug("multiple host records exist")
-		return nil, errors.New("multiple host records exist")
+		return nil, ErrManyHosts
 	}
 
 	var host HostID
 	err = json.Unmarshal(response.Data, &host)
 	if err != nil {
 		slog.Error("could not unmarshal response", slog.String("error", err.Error()))
-		return nil, fmt.Errorf("could not unmarshal response: %w", err)
+		return nil, errors.Join(http.ErrParseError, err)
 	}
 
 	slog.Debug("HBI host ID obtained", slog.String("id", host.InsightsInventoryID))
@@ -67,21 +72,25 @@ func GetHost(insightsClientID string) (*Host, error) {
 	response, err := service.MakeRequest("GET", "hosts", params, map[string][]string{}, nil)
 	if err != nil {
 		slog.Error("could not contact HBI", slog.String("error", err.Error()))
-		return nil, fmt.Errorf("could not contact HBI: %w", err)
+		return nil, errors.Join(http.ErrServiceUnreachable, err)
 	}
 
 	if response.Code != 200 {
 		slog.Error("HBI request failed", slog.String("raw response", string(response.Data)))
+		return nil, errors.Join(
+			http.ErrBadResponse,
+			fmt.Errorf("HBI request failed with %d", response.Code),
+		)
 	}
 
 	var hosts Hosts
 	if err = json.Unmarshal(response.Data, &hosts); err != nil {
 		slog.Error("could not unmarshal response", slog.String("error", err.Error()))
-		return nil, fmt.Errorf("could not unmarshal response: %w", err)
+		return nil, http.ErrParseError
 	}
 	if len(hosts.Results) == 0 {
 		slog.Debug("HBI returned no hosts")
-		return nil, errors.New("no hosts found")
+		return nil, ErrNoHost
 	}
 	if len(hosts.Results) > 1 {
 		slog.Debug("HBI returned more hosts", slog.Int("count", len(hosts.Results)))
@@ -98,12 +107,15 @@ func DeleteHost(insightsInventoryID string) error {
 	response, err := service.MakeRequest("DELETE", fmt.Sprintf("hosts/%s", insightsInventoryID), url.Values{}, make(map[string][]string), nil)
 	if err != nil {
 		slog.Error("could not contact HBI", slog.String("error", err.Error()))
-		return fmt.Errorf("could not contact HBI: %w", err)
+		return errors.Join(http.ErrServiceUnreachable, err)
 	}
 
 	if response.Code != 200 {
 		slog.Error("could not unregister host", slog.Any("raw response", response.Data))
-		return fmt.Errorf("could not unregister host, received %d", response.Code)
+		return errors.Join(
+			http.ErrBadResponse,
+			fmt.Errorf("HBI request failed with %d", response.Code),
+		)
 	}
 	return nil
 }
@@ -117,7 +129,7 @@ func UpdateDisplayName(insightsInventoryID, displayName string) error {
 	body, err := json.Marshal(map[string]string{"display_name": displayName})
 	if err != nil {
 		slog.Error("could not encode payload", slog.String("error", err.Error()))
-		return fmt.Errorf("could not encode payload: %w", err)
+		return errors.Join(http.ErrParseError, err)
 	}
 
 	response, err := service.MakeRequest(
@@ -129,12 +141,15 @@ func UpdateDisplayName(insightsInventoryID, displayName string) error {
 	)
 	if err != nil {
 		slog.Error("could not contact HBI", slog.String("error", err.Error()))
-		return fmt.Errorf("could not contact HBI: %w", err)
+		return http.ErrServiceUnreachable
 	}
 
 	if response.Code != 200 {
 		slog.Error("could not update host's display name", slog.Any("raw response", response.Data))
-		return fmt.Errorf("could not update host's display name, received %d", response.Code)
+		return errors.Join(
+			http.ErrBadResponse,
+			fmt.Errorf("could not update host's display name, received %d", response.Code),
+		)
 	}
 	return nil
 }
@@ -148,7 +163,7 @@ func UpdateAnsibleHostname(insightsInventoryID, ansibleHostname string) error {
 	body, err := json.Marshal(map[string]string{"ansible_host": ansibleHostname})
 	if err != nil {
 		slog.Error("could not encode payload", slog.String("error", err.Error()))
-		return fmt.Errorf("could not encode payload: %w", err)
+		return errors.Join(http.ErrParseError, err)
 	}
 
 	response, err := service.MakeRequest(
@@ -160,12 +175,15 @@ func UpdateAnsibleHostname(insightsInventoryID, ansibleHostname string) error {
 	)
 	if err != nil {
 		slog.Error("could not contact HBI", slog.String("error", err.Error()))
-		return fmt.Errorf("could not contact HBI: %w", err)
+		return errors.Join(http.ErrServiceUnreachable, err)
 	}
 
 	if response.Code != 200 {
 		slog.Error("could not update host's display name", slog.Any("raw response", response.Data))
-		return fmt.Errorf("could not update host's display name, received %d", response.Code)
+		return errors.Join(
+			http.ErrBadResponse,
+			fmt.Errorf("could not update host's display name, received %d", response.Code),
+		)
 	}
 	return nil
 }

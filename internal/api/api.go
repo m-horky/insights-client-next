@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	"github.com/m-horky/insights-client-next/internal/app"
-	"github.com/m-horky/insights-client-next/public/insights/api/ingress"
-	"github.com/m-horky/insights-client-next/public/insights/api/inventory"
 	"github.com/m-horky/insights-client-next/public/insights/http"
+	"github.com/m-horky/insights-client-next/public/insights/services/ingress"
+	"github.com/m-horky/insights-client-next/public/insights/services/inventory"
 )
 
 // Set up all API services.
