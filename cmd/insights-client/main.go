@@ -210,6 +210,9 @@ func runCLI(_ context.Context, cmd *cli.Command) error {
 	}
 
 	// handle commands
+	if arguments.Unregister {
+		return runUnregister()
+	}
 	if arguments.Status {
 		return runStatus()
 	}
