@@ -8,10 +8,8 @@ import (
 
 	"github.com/urfave/cli/v3"
 
-	"github.com/m-horky/insights-client-next/internal/api"
 	"github.com/m-horky/insights-client-next/internal/app"
 	"github.com/m-horky/insights-client-next/public/collectors"
-	"github.com/m-horky/insights-client-next/public/insights/api/inventory"
 )
 
 func init() {
@@ -137,10 +135,10 @@ func parseCLI(cmd *cli.Command) (*Arguments, error) {
 
 	// display deprecation notices
 	if cmd.Bool("test-connection") {
-		fmt.Println("Warning: command 'test-connection' is deprecated and will be removed in future releases. Use 'status' instead.")
+		fmt.Println("Notice: command 'test-connection' is deprecated and will be removed in future releases. Use 'status' instead.")
 	}
 	if cmd.Bool("compliance") {
-		fmt.Println("Warning: command 'compliance' is deprecated and will be removed in future releases. Use '--collector compliance' instead.")
+		fmt.Println("Notice: command 'compliance' is deprecated and will be removed in future releases. Use '--collector compliance' instead.")
 	}
 
 	// client
@@ -194,7 +192,7 @@ func parseCLI(cmd *cli.Command) (*Arguments, error) {
 	return arguments, nil
 }
 
-func runCLI(ctx context.Context, cmd *cli.Command) error {
+func runCLI(_ context.Context, cmd *cli.Command) error {
 	arguments, err := parseCLI(cmd)
 	if err != nil {
 		return err
@@ -212,64 +210,17 @@ func runCLI(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// handle commands
-	if arguments.DisplayName != "" || arguments.ResetDisplayName {
-		host, err := api.GetCurrentInventoryHost()
-		if err != nil {
-			fmt.Println("Error: could not get current inventory host.")
-			return err
-		}
-
-		displayName := arguments.DisplayName
-		if arguments.ResetDisplayName {
-			displayName, err = os.Hostname()
-			if err != nil {
-				fmt.Printf("Error: Could not reset display name.")
-				slog.Error("could not determine hostname", slog.String("error", err.Error()))
-				return err
-			}
-		}
-
-		err = inventory.UpdateDisplayName(host.InsightsInventoryID, displayName)
-		if err != nil {
-			fmt.Println("Error: Could not update display name.")
-			return err
-		}
-		if arguments.ResetDisplayName {
-			fmt.Println("Notice: Display name reset.")
-		} else {
-			fmt.Println("Notice: Display name updated.")
-		}
-		return nil
+	if arguments.Status {
+		return runStatus()
 	}
-
+	if arguments.DisplayName != "" || arguments.ResetDisplayName {
+		return runDisplayName(arguments)
+	}
 	if arguments.AnsibleHost != "" || arguments.ResetAnsibleHost {
-		host, err := api.GetCurrentInventoryHost()
-		if err != nil {
-			fmt.Println("Error: Could not get current Inventory host.")
-			return err
-		}
-
-		ansibleHostname := arguments.AnsibleHost
-		if arguments.ResetAnsibleHost {
-			ansibleHostname, err = os.Hostname()
-			if err != nil {
-				fmt.Printf("Error: Could not reset Ansible hostname.")
-				slog.Error("could not determine hostname", slog.String("error", err.Error()))
-				return err
-			}
-		}
-
-		err = inventory.UpdateAnsibleHostname(host.InsightsInventoryID, ansibleHostname)
-		if err != nil {
-			fmt.Println("Error: Could not update Ansible hostname.")
-			return err
-		}
-		if arguments.ResetAnsibleHost {
-			fmt.Println("Notice: Ansible hostname reset.")
-		} else {
-			fmt.Println("Notice: Ansible hostname updated.")
-		}
-		return nil
+		return runAnsibleHostname(arguments)
+	}
+	if arguments.CollectorList {
+		return runCollectorList()
 	}
 
 	fmt.Println("Error: Not implemented.")

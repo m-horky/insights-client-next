@@ -18,10 +18,10 @@ To keep the program output under control, we have a best practices we try to fol
 
 For output:
 
-- Include prefix
-  - `Notice` for informational messages (e.g. `Notice: Ansible hostname updated.`)
-  - `Warning` for handled errors (e.g. `Warning: Command 'foo' is deprecated, use 'bar' instead.`)
-  - `Error` for fatal errors preventing further runtime (e.g. `Error: Could not run collection.`)
+- Include prefix for non-final messages:
+  - `Notice` for informational messages (e.g. `Notice: Command 'foo' is deprecated, use 'bar' instead.`).
+  - `Warning` for handled errors.
+  - `Error` for fatal errors preventing further runtime (e.g. `Error: Could not run collection.`).
 - Start the sentence with a capital letter.
 - Do not include long explanations or internal errors. Logs are always in English and output is/will be translated into the current locale, mixing them would cause inconsistencies.
 - Do not print to standard output in `public` or `private` packages. All `fmt.Print` should be done by packages in `cmd`. 
