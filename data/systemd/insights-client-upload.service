@@ -1,0 +1,22 @@
+[Unit]
+Description=Insights Client Archive uploader
+Documentation=man:insights-client-upload(8)
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/etc/insights-client/.registered
+
+[Service]
+Type=exec
+ExecStart=/usr/libexec/insights-client/insights-client-upload
+
+Restart=on-failure
+RestartSec=1h
+
+WatchdogSec=15m
+CPUQuota=30%
+MemoryHigh=1G
+MemoryMax=2G
+TasksMax=300
+
+[Install]
+WantedBy=default.target

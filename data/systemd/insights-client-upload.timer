@@ -1,0 +1,13 @@
+[Unit]
+Description=Insights Client Archive uploader
+Documentation=man:insights-client-upload(8)
+After=network-online.target
+Wants=network-online.target
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=4h
+
+[Install]
+WantedBy=timers.target
