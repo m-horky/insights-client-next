@@ -33,7 +33,9 @@ func initLogging() {
 	} else {
 		fp, err := os.OpenFile(app.LogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
-			panic(err.Error())
+			// We're not root, we can't log.
+			// It doesn't matter the only commands that can be run as root are --version and --help.
+			return
 		}
 		slog.SetDefault(slog.New(app.NewFileHandler(
 			fp, &slog.HandlerOptions{AddSource: true, Level: app.GetConfiguration().LogLevel},
