@@ -112,17 +112,21 @@ func runUnregister() error {
 	}
 
 	if err = os.Remove("/etc/insights-client/.registered"); err != nil {
-		slog.Error("Could not remove /etc/insights-client/.registered", slog.String("error", err.Error()))
+		slog.Error("could not remove /etc/insights-client/.registered", slog.String("error", err.Error()))
 	} else {
 		slog.Debug("deleted /etc/insights-client/.registered")
 	}
 	if err = os.WriteFile("/etc/insights-client/.unregistered", []byte(""), 0644); err != nil {
-		slog.Error("Could not create .unregistered file", slog.String("error", err.Error()))
+		slog.Error("could not create .unregistered file", slog.String("error", err.Error()))
 	} else {
 		slog.Debug("created etc/insights-client/.unregistered file")
 	}
 
-	// TODO Disable systemd service
+	if err = os.Remove("/etc/insights-client/machine-id"); err != nil {
+		slog.Error("could not remove /etc/insights-client/machine-id", slog.String("error", err.Error()))
+	} else {
+		slog.Debug("deleted /etc/insights-client/machine-id")
+	}
 
 	fmt.Println("This host was unregistered.")
 	return nil
