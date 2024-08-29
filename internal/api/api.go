@@ -32,8 +32,12 @@ func init() {
 
 func GetCurrentInventoryHost() (*inventory.Host, error) {
 	insightsClientID, err := os.ReadFile("/etc/insights-client/machine-id")
+	if os.IsNotExist(err) {
+		slog.Debug("host is not registered, machine-id does not exist")
+		return nil, fmt.Errorf("host is not registered")
+	}
 	if err != nil {
-		slog.Debug("host is not registered, machine-id file missing or not readable")
+		slog.Debug("host is not registered, machine-id file not readable")
 		return nil, fmt.Errorf("host is not registered: %w", err)
 	}
 
