@@ -1,6 +1,7 @@
 package collectors
 
 import (
+	"errors"
 	"fmt"
 )
 
@@ -21,6 +22,11 @@ func GetCollectors() []*Collector {
 	}
 }
 
+// GetDefaultCollector returns the collector that should be run by default.
+func GetDefaultCollector() *Collector {
+	return GetAdvisorCollector()
+}
+
 // GetCollector filters available collectors by name.
 func GetCollector(name string) (*Collector, error) {
 	for _, collector := range GetCollectors() {
@@ -29,4 +35,8 @@ func GetCollector(name string) (*Collector, error) {
 		}
 	}
 	return nil, fmt.Errorf("collector '%s' not found", name)
+}
+
+func (c *Collector) Run() error {
+	return errors.New("not implemented")
 }
