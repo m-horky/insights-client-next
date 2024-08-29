@@ -95,40 +95,61 @@ func runStatus() error {
 	return nil
 }
 
+// Unregister the host.
+//
+// Deletes the host from Inventory and deletes local files.
 func runUnregister() error {
 	host, err := api.GetCurrentInventoryHost()
 	if errors.Is(err, http.ErrServiceUnreachable) {
 		fmt.Println("Error: Could not contact Inventory.")
 		return err
 	}
-	if errors.Is(err, inventory.ErrNoHost) {
-		fmt.Println("This host is not registered.")
-		return nil
+
+	wasUnregistered := false
+	// delete from Inventory
+	if host != nil {
+		err = inventory.DeleteHost(host.InsightsInventoryID)
+		if err != nil {
+			fmt.Println("Error: Could not delete host.")
+		}
+		wasUnregistered = true
 	}
 
-	err = inventory.DeleteHost(host.InsightsInventoryID)
-	if err != nil {
-		fmt.Println("Error: Could not delete host.")
-	}
-
+	// delete .registered
 	if err = os.Remove("/etc/insights-client/.registered"); err != nil {
-		slog.Error("could not remove /etc/insights-client/.registered", slog.String("error", err.Error()))
+		if !os.IsNotExist(err) {
+			slog.Error("could not remove /etc/insights-client/.registered", slog.String("error", err.Error()))
+		}
 	} else {
 		slog.Debug("deleted /etc/insights-client/.registered")
-	}
-	if err = os.WriteFile("/etc/insights-client/.unregistered", []byte(""), 0644); err != nil {
-		slog.Error("could not create .unregistered file", slog.String("error", err.Error()))
-	} else {
-		slog.Debug("created etc/insights-client/.unregistered file")
+		wasUnregistered = true
 	}
 
+	// delete machine-id
 	if err = os.Remove("/etc/insights-client/machine-id"); err != nil {
-		slog.Error("could not remove /etc/insights-client/machine-id", slog.String("error", err.Error()))
+		if !os.IsNotExist(err) {
+			slog.Error("could not remove /etc/insights-client/machine-id", slog.String("error", err.Error()))
+		}
 	} else {
 		slog.Debug("deleted /etc/insights-client/machine-id")
+		wasUnregistered = true
 	}
 
-	fmt.Println("This host was unregistered.")
+	// write .unregistered
+	if wasUnregistered {
+		if err = writeTimestampFile("/etc/insights-client/.unregistered"); err != nil {
+			slog.Error("could not create .unregistered file", slog.String("error", err.Error()))
+		} else {
+			slog.Debug("created etc/insights-client/.unregistered file")
+		}
+	}
+
+	if wasUnregistered {
+		fmt.Println("This host unregistered.")
+	} else {
+		fmt.Println("This host is not registered.")
+	}
+
 	return nil
 }
 
