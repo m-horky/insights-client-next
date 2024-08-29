@@ -21,9 +21,8 @@ func GetAdvisorCollector() *Collector {
 }
 
 func getCoreVersion() string {
-	if os.Geteuid() > 0 {
-		slog.Warn("core requires root")
-		return "unknown (no root)"
+	if os.Geteuid() != 0 {
+		return "??? (superuser permission required)"
 	}
 
 	cmd := exec.Command("python3", "-c", "from insights.client import InsightsClient; print(InsightsClient(None, False).version())")
@@ -45,7 +44,7 @@ func getCoreVersion() string {
 			slog.Any("stdout", stdoutBuffer.String()),
 			slog.Any("stderr", stderrBuffer.String()),
 		)
-		return "unknown (parse error)"
+		return "??? (parse error)"
 	}
 	return strings.TrimSpace(stdoutBuffer.String())
 }
