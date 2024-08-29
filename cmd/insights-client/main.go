@@ -14,7 +14,7 @@ import (
 
 func init() {
 	initLogging()
-	initCli()
+	initCLI()
 }
 
 func initLogging() {
@@ -41,7 +41,7 @@ func initLogging() {
 	}
 }
 
-func initCli() {
+func initCLI() {
 	cli.HelpFlag = &cli.BoolFlag{Name: "help"}
 	cli.VersionFlag = &cli.BoolFlag{Name: "version"}
 	cli.VersionPrinter = func(cmd *cli.Command) {
