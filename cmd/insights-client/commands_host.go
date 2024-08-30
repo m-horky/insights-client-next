@@ -34,6 +34,54 @@ func runStatus() error {
 	return nil
 }
 
+func runRegister(arguments *Arguments) error {
+	host, err := api.GetCurrentInventoryHost()
+	if errors.Is(err, http.ErrServiceUnreachable) {
+		fmt.Println("Error: Could not contact Inventory.")
+		return err
+	}
+	if host != nil {
+		fmt.Println("Error: This host is already registered.")
+		return nil
+	}
+
+	// TODO Read machine-id from RHSM identity certificate
+	if err = os.WriteFile("/etc/insights-client/machine-id", []byte("34d83e98-6818-414d-924d-26d71cbc617a"), 0755); err != nil {
+		slog.Error("could not create machine-id file", slog.String("error", err.Error()))
+	} else {
+		slog.Debug("created /etc/insights-client/machine-id")
+	}
+
+	arguments.Collector = collectors.GetDefaultCollector().Name
+	// TODO This is awful hack, abstract most of the collection into a separate method :)
+	err = runCollector(*arguments)
+	if err != nil {
+		return err
+	}
+
+	// delete .unregistered
+	if err = os.Remove("/etc/insights-client/.unregistered"); err != nil {
+		if !os.IsNotExist(err) {
+			slog.Error("could not remove /etc/insights-client/.unregistered", slog.String("error", err.Error()))
+		}
+	} else {
+		slog.Debug("deleted /etc/insights-client/.unregistered")
+	}
+
+	// write .registered
+	if err = writeTimestampFile("/etc/insights-client/.registered"); err != nil {
+		slog.Error("could not create .registered file", slog.String("error", err.Error()))
+	} else {
+		slog.Debug("created /etc/insights-client/.registered file")
+	}
+
+	// TODO Write /etc/rhsm/facts/insights.facts
+
+	fmt.Println("This host is now registered. Visit https://console.redhat.com/insights/ to see the Red Hat Insights console.")
+
+	return nil
+}
+
 // Unregister the host.
 //
 // Deletes the host from Inventory and deletes local files.

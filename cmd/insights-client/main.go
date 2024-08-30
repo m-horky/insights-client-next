@@ -98,7 +98,7 @@ func buildCLI() *cli.Command {
 	}
 }
 
-func verifyCollector(ctx context.Context, cmd *cli.Command, collector string) error {
+func verifyCollector(_ context.Context, _ *cli.Command, collector string) error {
 	if _, err := collectors.GetCollector(collector); err != nil {
 		fmt.Printf("Error: invalid collector: '%s'\n", collector)
 		return err
@@ -125,6 +125,7 @@ type Arguments struct {
 	Collector        string
 	CollectorList    bool
 	Help             bool
+	Debug            bool
 	Format           app.Format
 }
 
@@ -134,6 +135,7 @@ func parseCLI(cmd *cli.Command) (*Arguments, error) {
 
 	// flags
 	arguments.Format = app.MustParseFormat(cmd.String("format"))
+	arguments.Debug = cmd.IsSet("debug")
 
 	// display deprecation notices
 	if cmd.Bool("test-connection") {
@@ -212,6 +214,9 @@ func runCLI(_ context.Context, cmd *cli.Command) error {
 	}
 
 	// handle commands
+	if arguments.Register {
+		return runRegister(arguments)
+	}
 	if arguments.Unregister {
 		return runUnregister()
 	}
@@ -226,6 +231,9 @@ func runCLI(_ context.Context, cmd *cli.Command) error {
 	}
 	if arguments.CollectorList {
 		return runCollectorList()
+	}
+	if arguments.Collector != "" {
+		return runCollector(*arguments)
 	}
 
 	fmt.Println("Error: Not implemented.")
