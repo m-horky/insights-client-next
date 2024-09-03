@@ -49,7 +49,7 @@ func GetHost(insightsClientID string) (*Host, app.HumanError) {
 	}
 
 	var hosts Hosts
-	if err = json.Unmarshal(response.Data, &hosts); err != nil {
+	if err := json.Unmarshal(response.Data, &hosts); err != nil {
 		slog.Error("could not unmarshal response", slog.String("error", err.Error()))
 		return nil, api.NewError(
 			api.ErrUnparseable,

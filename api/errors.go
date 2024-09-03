@@ -6,6 +6,7 @@ import (
 )
 
 var (
+	ErrRequest            = errors.New("error making API request")
 	ErrNoCertificate      = errors.New("could not use certificate")
 	ErrServiceUnreachable = errors.New("service is unreachable")
 	ErrBadResponse        = errors.New("bad response from the service")
