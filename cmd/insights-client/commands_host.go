@@ -17,7 +17,7 @@ func runStatus() app.HumanError {
 		return err
 	}
 
-	fmt.Println("This host is registered.")
+	fmt.Println("This host has been registered.")
 	fmt.Printf("* Insights Client ID:    %s\n", host.InsightsClientID)
 	fmt.Printf("* Insights Inventory ID: %s\n", host.InsightsInventoryID)
 	fmt.Printf("* Organization ID:       %s\n", host.OrganizationID)
@@ -113,7 +113,7 @@ func runUnregister() app.HumanError {
 		if err := writeTimestampFile("/etc/insights-client/.unregistered"); err != nil {
 			slog.Error("could not create .unregistered file", slog.String("error", err.Error()))
 		} else {
-			slog.Debug("created etc/insights-client/.unregistered file")
+			slog.Debug("created /etc/insights-client/.unregistered file")
 		}
 	}
 
