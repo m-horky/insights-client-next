@@ -30,8 +30,12 @@ func runRegister(arguments *Arguments) app.HumanError {
 		return app.NewError(app.ErrRegistered, nil, "This host is already registered.")
 	}
 
-	// TODO Read machine-id from RHSM identity certificate
-	if err := os.WriteFile("/etc/insights-client/machine-id", []byte("34d83e98-6818-414d-924d-26d71cbc617a"), 0755); err != nil {
+	rhsm, err := app.ReadRHSMIdentity("/etc/pki/consumer/cert.pem")
+	if err != nil {
+		return err
+	}
+
+	if err := os.WriteFile("/etc/insights-client/machine-id", []byte(rhsm), 0755); err != nil {
 		slog.Error("could not create machine-id file", slog.String("error", err.Error()))
 	} else {
 		slog.Debug("created /etc/insights-client/machine-id")
@@ -39,7 +43,7 @@ func runRegister(arguments *Arguments) app.HumanError {
 
 	arguments.Collector = collectors.GetDefaultCollector().Name
 	// TODO This is awful hack, abstract most of the collection into a separate method :)
-	err := runCollector(*arguments)
+	err = runCollector(*arguments)
 	if err != nil {
 		return err
 	}
