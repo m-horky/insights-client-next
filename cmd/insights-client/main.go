@@ -8,13 +8,18 @@ import (
 
 	"github.com/urfave/cli/v3"
 
-	"github.com/m-horky/insights-client-next/internal/app"
-	"github.com/m-horky/insights-client-next/public/collectors"
+	"github.com/m-horky/insights-client-next/api"
+	"github.com/m-horky/insights-client-next/api/ingress"
+	"github.com/m-horky/insights-client-next/api/inventory"
+	"github.com/m-horky/insights-client-next/app"
+	"github.com/m-horky/insights-client-next/collectors"
+	"github.com/m-horky/insights-client-next/internal"
 )
 
 func init() {
 	initLogging()
 	initCLI()
+	initServices()
 }
 
 func initLogging() {
@@ -27,18 +32,18 @@ func initLogging() {
 	}
 
 	if debug {
-		slog.SetDefault(slog.New(app.NewColorHandler(
-			os.Stderr, &slog.HandlerOptions{AddSource: true, Level: app.GetConfiguration().LogLevel},
+		slog.SetDefault(slog.New(internal.NewColorHandler(
+			os.Stderr, &slog.HandlerOptions{AddSource: true, Level: internal.GetConfiguration().LogLevel},
 		)))
 	} else {
-		fp, err := os.OpenFile(app.LogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		fp, err := os.OpenFile(internal.LogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			// We're not root, we can't log.
 			// It doesn't matter the only commands that can be run as root are --version and --help.
 			return
 		}
-		slog.SetDefault(slog.New(app.NewFileHandler(
-			fp, &slog.HandlerOptions{AddSource: true, Level: app.GetConfiguration().LogLevel},
+		slog.SetDefault(slog.New(internal.NewFileHandler(
+			fp, &slog.HandlerOptions{AddSource: true, Level: internal.GetConfiguration().LogLevel},
 		)))
 	}
 }
@@ -47,10 +52,24 @@ func initCLI() {
 	cli.HelpFlag = &cli.BoolFlag{Name: "help"}
 	cli.VersionFlag = &cli.BoolFlag{Name: "version"}
 	cli.VersionPrinter = func(cmd *cli.Command) {
-		fmt.Println("insights-client", app.Version)
+		fmt.Println("insights-client", internal.Version)
 		for _, collector := range collectors.GetCollectors() {
 			fmt.Printf("* %s %s\n", collector.Name, collector.Version)
 		}
+	}
+}
+
+func initServices() {
+	config := internal.GetConfiguration()
+	{
+		s := api.NewService(config.APIProtocol, config.APIHost, config.APIPort, "api/inventory/v1")
+		s.Authenticate(config.IdentityCertificate, config.IdentityKey)
+		inventory.Init(&s)
+	}
+	{
+		s := api.NewService(config.APIProtocol, config.APIHost, config.APIPort, "api/ingress/v1")
+		s.Authenticate(config.IdentityCertificate, config.IdentityKey)
+		ingress.Init(&s)
 	}
 }
 
@@ -59,6 +78,11 @@ func main() {
 
 	slog.Debug("started", slog.Any("args", os.Args))
 	if err := cmd.Run(context.Background(), os.Args); err != nil {
+		if humanError, isHuman := err.(app.HumanError); isHuman {
+			fmt.Println(humanError.Human())
+		} else {
+			fmt.Println("Error: " + err.Error())
+		}
 		slog.Error("finished", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
@@ -69,7 +93,7 @@ func buildCLI() *cli.Command {
 	return &cli.Command{
 		Name:            "insights-client",
 		HideHelpCommand: true,
-		Version:         app.Version,
+		Version:         internal.Version,
 		Usage:           "Upload data to Red Hat Insights",
 		UsageText:       fmt.Sprintf("%s COMMAND [FLAGS...]", "insights-client"),
 		Flags: []cli.Flag{
@@ -107,7 +131,7 @@ func verifyCollector(_ context.Context, _ *cli.Command, collector string) error 
 }
 
 func verifyFormat(_ context.Context, _ *cli.Command, format string) error {
-	if _, err := app.ParseFormat(format); err != nil {
+	if _, err := internal.ParseFormat(format); err != nil {
 		fmt.Printf("Error: invalid format: '%s'\n", format)
 		return fmt.Errorf("invalid format: '%s'", format)
 	}
@@ -126,7 +150,7 @@ type Arguments struct {
 	CollectorList    bool
 	Help             bool
 	Debug            bool
-	Format           app.Format
+	Format           internal.Format
 }
 
 // parseCLI converts the cli.Command object into a clean structure.
@@ -134,7 +158,7 @@ func parseCLI(cmd *cli.Command) (*Arguments, error) {
 	arguments := &Arguments{}
 
 	// flags
-	arguments.Format = app.MustParseFormat(cmd.String("format"))
+	arguments.Format = internal.MustParseFormat(cmd.String("format"))
 	arguments.Debug = cmd.IsSet("debug")
 
 	// display deprecation notices
@@ -199,7 +223,7 @@ func parseCLI(cmd *cli.Command) (*Arguments, error) {
 func runCLI(_ context.Context, cmd *cli.Command) error {
 	arguments, err := parseCLI(cmd)
 	if err != nil {
-		return err
+		return app.NewError(app.ErrInput, err, "Could not parse the input.")
 	}
 
 	if arguments.Help {
@@ -209,8 +233,7 @@ func runCLI(_ context.Context, cmd *cli.Command) error {
 
 	// ask for elevated privileges
 	if os.Geteuid() != 0 {
-		fmt.Println("Error: This command has to be run with superuser privileges.")
-		return fmt.Errorf("this command has to be run with superuser privileges")
+		return app.NewError(app.ErrPermissions, nil, "This command has to be run with superuser privileges.")
 	}
 
 	// handle commands
@@ -236,6 +259,5 @@ func runCLI(_ context.Context, cmd *cli.Command) error {
 		return runCollector(*arguments)
 	}
 
-	fmt.Println("Error: Not implemented.")
-	return fmt.Errorf("not implemented")
+	return app.NewError(nil, nil, "Not implemented.")
 }

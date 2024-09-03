@@ -5,30 +5,29 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/m-horky/insights-client-next/internal/api"
-	"github.com/m-horky/insights-client-next/public/insights/services/inventory"
+	"github.com/m-horky/insights-client-next/api/inventory"
+	"github.com/m-horky/insights-client-next/app"
+	"github.com/m-horky/insights-client-next/internal"
 )
 
-func runDisplayName(arguments *Arguments) error {
-	host, err := api.GetCurrentInventoryHost()
+func runDisplayName(arguments *Arguments) app.HumanError {
+	host, err := internal.GetCurrentInventoryHost()
 	if err != nil {
-		fmt.Println("Error: could not get current inventory host.")
 		return err
 	}
 
 	displayName := arguments.DisplayName
 	if arguments.ResetDisplayName {
-		displayName, err = os.Hostname()
-		if err != nil {
-			fmt.Printf("Error: Could not reset display name.")
-			slog.Error("could not determine hostname", slog.String("error", err.Error()))
-			return err
+		hostname, osErr := os.Hostname()
+		if osErr != nil {
+			slog.Error("could not determine hostname", slog.String("error", osErr.Error()))
+			return app.NewError(nil, osErr, "Could not reset display name.")
 		}
+		displayName = hostname
 	}
 
 	err = inventory.UpdateDisplayName(host.InsightsInventoryID, displayName)
 	if err != nil {
-		fmt.Println("Error: Could not update display name.")
 		return err
 	}
 	if arguments.ResetDisplayName {
@@ -39,8 +38,8 @@ func runDisplayName(arguments *Arguments) error {
 	return nil
 }
 
-func runAnsibleHostname(arguments *Arguments) error {
-	host, err := api.GetCurrentInventoryHost()
+func runAnsibleHostname(arguments *Arguments) app.HumanError {
+	host, err := internal.GetCurrentInventoryHost()
 	if err != nil {
 		fmt.Println("Error: Could not get current Inventory host.")
 		return err
@@ -48,17 +47,16 @@ func runAnsibleHostname(arguments *Arguments) error {
 
 	ansibleHostname := arguments.AnsibleHost
 	if arguments.ResetAnsibleHost {
-		ansibleHostname, err = os.Hostname()
-		if err != nil {
-			fmt.Printf("Error: Could not reset Ansible hostname.")
-			slog.Error("could not determine hostname", slog.String("error", err.Error()))
-			return err
+		hostname, osErr := os.Hostname()
+		if osErr != nil {
+			slog.Error("could not determine hostname", slog.String("error", osErr.Error()))
+			return app.NewError(nil, osErr, "Could not reset ansible hostname.")
 		}
+		ansibleHostname = hostname
 	}
 
 	err = inventory.UpdateAnsibleHostname(host.InsightsInventoryID, ansibleHostname)
 	if err != nil {
-		fmt.Println("Error: Could not update Ansible hostname.")
 		return err
 	}
 	if arguments.ResetAnsibleHost {

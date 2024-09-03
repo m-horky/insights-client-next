@@ -4,7 +4,7 @@ VERSION?=0.0.0
 build:
 	mkdir -p bin/ && \
 	go build \
-		-ldflags "-X \"github.com/m-horky/insights-client-next/internal/app.Version=$(VERSION)\"" \
+		-ldflags "-X \"github.com/m-horky/insights-client-next/internal.Version=$(VERSION)\"" \
 		-o bin/ ./...
 
 .PHONY: check

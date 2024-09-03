@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -12,11 +13,12 @@ import (
 	"github.com/briandowns/spinner"
 	_ "github.com/briandowns/spinner"
 
-	"github.com/m-horky/insights-client-next/public/collectors"
-	"github.com/m-horky/insights-client-next/public/insights/services/ingress"
+	"github.com/m-horky/insights-client-next/api/ingress"
+	"github.com/m-horky/insights-client-next/app"
+	"github.com/m-horky/insights-client-next/collectors"
 )
 
-func runCollectorList() error {
+func runCollectorList() app.HumanError {
 	fmt.Println("Available collectors:")
 	for _, collector := range collectors.GetCollectors() {
 		fmt.Printf("* %s %s\n", collector.Name, collector.Version)
@@ -24,7 +26,7 @@ func runCollectorList() error {
 	return nil
 }
 
-func runCollector(arguments Arguments) error {
+func runCollector(arguments Arguments) app.HumanError {
 	collector, err := collectors.GetCollector(arguments.Collector)
 	if err != nil {
 		return err
@@ -51,13 +53,17 @@ func runCollector(arguments Arguments) error {
 		spin.Suffix = fmt.Sprintf(" waiting for '%s' to collect its data", collector.Name)
 		spin.Start()
 	}
-	err = cmd.Run()
+	cmdErr := cmd.Run()
 	if isRichOutput(arguments) {
 		spin.Stop()
 	}
 
-	if err != nil {
-		return err
+	if cmdErr != nil {
+		return app.NewError(
+			nil,
+			errors.Join(cmdErr, errors.New(stderr.String())),
+			"Could not run collector.",
+		)
 	}
 	path := strings.TrimSpace(stdout.String())
 	defer os.Remove(path)

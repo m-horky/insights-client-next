@@ -1,29 +1,19 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"log/slog"
 	"os"
 
-	"github.com/m-horky/insights-client-next/internal/api"
-	"github.com/m-horky/insights-client-next/public/collectors"
-	"github.com/m-horky/insights-client-next/public/insights/http"
-	"github.com/m-horky/insights-client-next/public/insights/services/inventory"
+	"github.com/m-horky/insights-client-next/api/inventory"
+	"github.com/m-horky/insights-client-next/app"
+	"github.com/m-horky/insights-client-next/collectors"
+	"github.com/m-horky/insights-client-next/internal"
 )
 
-func runStatus() error {
-	host, err := api.GetCurrentInventoryHost()
-	if errors.Is(err, http.ErrServiceUnreachable) {
-		fmt.Println("Error: Could not contact Inventory.")
-		return err
-	}
-	if errors.Is(err, inventory.ErrNoHost) {
-		fmt.Println("Error: This host is not registered.")
-		return nil
-	}
+func runStatus() app.HumanError {
+	host, err := internal.GetCurrentInventoryHost()
 	if err != nil {
-		fmt.Println("Error: Could not get registration status.")
 		return err
 	}
 
@@ -34,19 +24,14 @@ func runStatus() error {
 	return nil
 }
 
-func runRegister(arguments *Arguments) error {
-	host, err := api.GetCurrentInventoryHost()
-	if errors.Is(err, http.ErrServiceUnreachable) {
-		fmt.Println("Error: Could not contact Inventory.")
-		return err
-	}
+func runRegister(arguments *Arguments) app.HumanError {
+	host, _ := internal.GetCurrentInventoryHost()
 	if host != nil {
-		fmt.Println("Error: This host is already registered.")
-		return nil
+		return app.NewError(app.ErrRegistered, nil, "This host is already registered.")
 	}
 
 	// TODO Read machine-id from RHSM identity certificate
-	if err = os.WriteFile("/etc/insights-client/machine-id", []byte("34d83e98-6818-414d-924d-26d71cbc617a"), 0755); err != nil {
+	if err := os.WriteFile("/etc/insights-client/machine-id", []byte("34d83e98-6818-414d-924d-26d71cbc617a"), 0755); err != nil {
 		slog.Error("could not create machine-id file", slog.String("error", err.Error()))
 	} else {
 		slog.Debug("created /etc/insights-client/machine-id")
@@ -54,13 +39,13 @@ func runRegister(arguments *Arguments) error {
 
 	arguments.Collector = collectors.GetDefaultCollector().Name
 	// TODO This is awful hack, abstract most of the collection into a separate method :)
-	err = runCollector(*arguments)
+	err := runCollector(*arguments)
 	if err != nil {
 		return err
 	}
 
 	// delete .unregistered
-	if err = os.Remove("/etc/insights-client/.unregistered"); err != nil {
+	if err := os.Remove("/etc/insights-client/.unregistered"); err != nil {
 		if !os.IsNotExist(err) {
 			slog.Error("could not remove /etc/insights-client/.unregistered", slog.String("error", err.Error()))
 		}
@@ -69,7 +54,7 @@ func runRegister(arguments *Arguments) error {
 	}
 
 	// write .registered
-	if err = writeTimestampFile("/etc/insights-client/.registered"); err != nil {
+	if err := writeTimestampFile("/etc/insights-client/.registered"); err != nil {
 		slog.Error("could not create .registered file", slog.String("error", err.Error()))
 	} else {
 		slog.Debug("created /etc/insights-client/.registered file")
@@ -85,25 +70,22 @@ func runRegister(arguments *Arguments) error {
 // Unregister the host.
 //
 // Deletes the host from Inventory and deletes local files.
-func runUnregister() error {
-	host, err := api.GetCurrentInventoryHost()
-	if errors.Is(err, http.ErrServiceUnreachable) {
-		fmt.Println("Error: Could not contact Inventory.")
+func runUnregister() app.HumanError {
+	host, err := internal.GetCurrentInventoryHost()
+	if err != nil {
 		return err
 	}
 
 	wasUnregistered := false
 	// delete from Inventory
 	if host != nil {
-		err = inventory.DeleteHost(host.InsightsInventoryID)
-		if err != nil {
-			fmt.Println("Error: Could not delete host.")
+		if err := inventory.DeleteHost(host.InsightsInventoryID); err == nil {
+			wasUnregistered = true
 		}
-		wasUnregistered = true
 	}
 
 	// delete .registered
-	if err = os.Remove("/etc/insights-client/.registered"); err != nil {
+	if err := os.Remove("/etc/insights-client/.registered"); err != nil {
 		if !os.IsNotExist(err) {
 			slog.Error("could not remove /etc/insights-client/.registered", slog.String("error", err.Error()))
 		}
@@ -113,7 +95,7 @@ func runUnregister() error {
 	}
 
 	// delete machine-id
-	if err = os.Remove("/etc/insights-client/machine-id"); err != nil {
+	if err := os.Remove("/etc/insights-client/machine-id"); err != nil {
 		if !os.IsNotExist(err) {
 			slog.Error("could not remove /etc/insights-client/machine-id", slog.String("error", err.Error()))
 		}
@@ -124,7 +106,7 @@ func runUnregister() error {
 
 	// write .unregistered
 	if wasUnregistered {
-		if err = writeTimestampFile("/etc/insights-client/.unregistered"); err != nil {
+		if err := writeTimestampFile("/etc/insights-client/.unregistered"); err != nil {
 			slog.Error("could not create .unregistered file", slog.String("error", err.Error()))
 		} else {
 			slog.Debug("created etc/insights-client/.unregistered file")
@@ -134,7 +116,7 @@ func runUnregister() error {
 	if wasUnregistered {
 		fmt.Println("This host was unregistered.")
 	} else {
-		fmt.Println("This host is not registered.")
+		return app.NewError(nil, nil, "This host was not registered.")
 	}
 
 	return nil

@@ -1,4 +1,4 @@
-package app
+package internal
 
 import (
 	"fmt"
@@ -23,7 +23,7 @@ func ClearConfiguration() {
 type Configuration struct {
 	APIProtocol         string        `config:"api_protocol"`
 	APIHost             string        `config:"api_host"`
-	APIPort             uint64        `config:"api_port"`
+	APIPort             uint          `config:"api_port"`
 	HTTPTimeout         time.Duration `config:"http_timeout"`
 	LogLevel            slog.Level    `config:"loglevel"`
 	IdentityCertificate string        `config:"identity_certificate"`
@@ -40,8 +40,8 @@ func (c *Configuration) update(data map[string]string) {
 		case "api_host":
 			c.APIHost = value
 		case "api_port":
-			if number, err := strconv.ParseUint(value, 10, 64); err == nil {
-				c.APIPort = number
+			if number, err := strconv.ParseUint(value, 10, 32); err == nil {
+				c.APIPort = uint(number)
 			} else {
 				slog.Warn("ignoring malformed API port: %s", value)
 			}

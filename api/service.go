@@ -1,4 +1,4 @@
-package http
+package api
 
 import (
 	"bytes"
@@ -9,23 +9,39 @@ import (
 	"net/url"
 	"os"
 	"time"
-
-	"github.com/m-horky/insights-client-next/internal/app"
 )
 
 // Service is a representation of an API service.
 //
 // To create an instance, use NewService.
 type Service struct {
-	Protocol string
-	Hostname string
-	Port     uint64
-	// Path is in a form of `api/v1/NAME`, without leading or trailing slashes.
-	Path string
+	protocol          string
+	hostname          string
+	port              uint
+	path              string
+	clientCertificate string
+	clientKey         string
+}
+
+// NewService creates a definition for service API.
+//
+// `path` is in a form of `api/NAME/v1`, without leading or trailing slashes.
+func NewService(protocol, hostname string, port uint, path string) Service {
+	return Service{
+		protocol: protocol,
+		hostname: hostname,
+		port:     port,
+		path:     path,
+	}
+}
+
+func (s *Service) Authenticate(certificate, key string) {
+	s.clientCertificate = certificate
+	s.clientKey = key
 }
 
 func (s *Service) String() string {
-	return fmt.Sprintf("%s://%s:%d/%s", s.Protocol, s.Hostname, s.Port, s.Path)
+	return fmt.Sprintf("%s://%s:%d/%s", s.protocol, s.hostname, s.port, s.path)
 }
 
 // MakeRequest sends a request to a relevant service.
@@ -39,8 +55,6 @@ func (s *Service) MakeRequest(
 	headers map[string][]string,
 	body *bytes.Buffer,
 ) (*Response, error) {
-	config := app.GetConfiguration()
-
 	fullUrl := fmt.Sprintf("%s/%s?%s", s, endpoint, parameters.Encode())
 
 	if body == nil {
@@ -60,7 +74,7 @@ func (s *Service) MakeRequest(
 		req.Header.Set("Accept", "application/json")
 	}
 
-	client, err := NewAuthenticatedClient(config.IdentityCertificate, config.IdentityKey)
+	client, err := NewAuthenticatedClient(s.clientCertificate, s.clientKey)
 	if err != nil {
 		slog.Error("could not create client", slog.String("error", err.Error()))
 		return nil, fmt.Errorf("could not create client: %w", err)

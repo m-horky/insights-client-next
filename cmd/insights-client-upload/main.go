@@ -8,8 +8,8 @@ import (
 
 	"github.com/urfave/cli/v3"
 
-	"github.com/m-horky/insights-client-next/internal/app"
-	"github.com/m-horky/insights-client-next/public/collectors"
+	"github.com/m-horky/insights-client-next/collectors"
+	"github.com/m-horky/insights-client-next/internal"
 )
 
 func init() {
@@ -18,12 +18,12 @@ func init() {
 }
 
 func initLogging() {
-	fp, err := os.OpenFile(app.LogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	fp, err := os.OpenFile(internal.LogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return
 	}
-	slog.SetDefault(slog.New(app.NewFileHandler(
-		fp, &slog.HandlerOptions{AddSource: true, Level: app.GetConfiguration().LogLevel},
+	slog.SetDefault(slog.New(internal.NewFileHandler(
+		fp, &slog.HandlerOptions{AddSource: true, Level: internal.GetConfiguration().LogLevel},
 	)))
 }
 
@@ -31,7 +31,7 @@ func initCLI() {
 	cli.HelpFlag = &cli.BoolFlag{Name: "help"}
 	cli.VersionFlag = &cli.BoolFlag{Name: "version"}
 	cli.VersionPrinter = func(cmd *cli.Command) {
-		fmt.Println(os.Args[0], app.Version)
+		fmt.Println(os.Args[0], internal.Version)
 	}
 }
 
@@ -39,7 +39,7 @@ func main() {
 	cmd := &cli.Command{
 		Name:            os.Args[0],
 		HideHelpCommand: true,
-		Version:         app.Version,
+		Version:         internal.Version,
 		Usage:           "Upload data to Red Hat Insights",
 		UsageText:       fmt.Sprintf("%s [COMMAND]", os.Args[0]),
 		Action:          runCLI,
