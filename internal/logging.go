@@ -28,7 +28,7 @@ func (handler *ColorHandler) Handle(_ context.Context, record slog.Record) error
 	frames := runtime.CallersFrames([]uintptr{record.PC})
 	frame, _ := frames.Next()
 
-	source := "\n  \033[36msource\033[0m \033[2m" + fmt.Sprintf("%s:%d", frame.Function, frame.Line) + "\033[0m"
+	source := "\033[36m" + fmt.Sprintf("%s:%d", frame.Function, frame.Line) + "\033[0m"
 
 	var fields []string
 	record.Attrs(func(attr slog.Attr) bool {
@@ -56,7 +56,7 @@ func (handler *FileHandler) Handle(_ context.Context, record slog.Record) error 
 	frame, _ := frames.Next()
 	var fields []string
 	record.Attrs(func(attr slog.Attr) bool {
-		fields = append(fields, fmt.Sprintf("%s=%s", strings.ReplaceAll(attr.Key, " ", "-"), strings.TrimSpace(attr.Value.String())))
+		fields = append(fields, fmt.Sprintf("%s=%s", strings.ReplaceAll(attr.Key, " ", "_"), strings.TrimSpace(attr.Value.String())))
 		return true
 	})
 	handler.logger.Println(fmt.Sprintf("%s %s %s:%d %s %s", timestamp, record.Level.String(), frame.Function, frame.Line, record.Message, strings.Join(fields, " ")))
