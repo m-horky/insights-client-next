@@ -25,7 +25,11 @@ func Init(s *api.Service) {
 
 // UploadArchive loads an archive from filesystem and uploads it to Ingress.
 func UploadArchive(archive Archive) (*Uploaded, app.HumanError) {
-	slog.Debug("uploading archive")
+	slog.Debug(
+		"uploading archive",
+		slog.String("path", archive.Path),
+		slog.String("content-type", archive.ContentType),
+	)
 
 	formData := new(bytes.Buffer)
 	form := multipart.NewWriter(formData)
