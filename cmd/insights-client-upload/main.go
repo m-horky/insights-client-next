@@ -8,6 +8,7 @@ import (
 
 	"github.com/urfave/cli/v3"
 
+	"github.com/m-horky/insights-client-next/api/ingress"
 	"github.com/m-horky/insights-client-next/collectors"
 	"github.com/m-horky/insights-client-next/internal"
 )
@@ -69,7 +70,26 @@ func runCLI(_ context.Context, _ *cli.Command) error {
 	}
 
 	collector := collectors.GetDefaultCollector()
-	fmt.Printf("Running collector '%s'.\n", collector.Name)
+	fmt.Printf("Running collector '%s'\n", collector.Name)
 	slog.Debug("Running collector", slog.String("name", collector.Name))
-	return collector.Run()
+
+	archiveDirectory, err := collector.Collect()
+	if err != nil {
+		fmt.Printf("Could not collect data: %v\n", err)
+		return err
+	}
+	defer os.RemoveAll(archiveDirectory)
+	archiveFile, err := internal.CompressDirectory(archiveDirectory)
+	if err != nil {
+		fmt.Printf("Could not compress data: %v\n", err)
+		return err
+	}
+	defer os.Remove(archiveFile)
+	_, err = ingress.UploadArchive(ingress.Archive{ContentType: collector.ContentType, Path: archiveFile})
+	if err != nil {
+		fmt.Printf("Could not upload data: %v\n", err)
+		return err
+	}
+	fmt.Println("Archive uploaded.")
+	return nil
 }

@@ -4,4 +4,7 @@ import (
 	"errors"
 )
 
-var ErrNoCollector = errors.New("no such collector")
+var (
+	ErrNoCollector = errors.New("no such collector")
+	ErrCollection  = errors.New("could not collect")
+)

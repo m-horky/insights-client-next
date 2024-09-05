@@ -1,13 +1,8 @@
 package main
 
 import (
-	"bytes"
-	"errors"
 	"fmt"
-	"log/slog"
 	"os"
-	"os/exec"
-	"strings"
 	"time"
 
 	"github.com/briandowns/spinner"
@@ -16,6 +11,7 @@ import (
 	"github.com/m-horky/insights-client-next/api/ingress"
 	"github.com/m-horky/insights-client-next/app"
 	"github.com/m-horky/insights-client-next/collectors"
+	"github.com/m-horky/insights-client-next/internal"
 )
 
 func runCollectorList() app.HumanError {
@@ -32,43 +28,38 @@ func runCollector(arguments Arguments) app.HumanError {
 		return err
 	}
 
-	// TODO Check that we're registered first
-
-	var stdout, stderr bytes.Buffer
-	cmd := exec.Command(collector.Exec, collector.ExecArgs...)
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	cmd.Env = collector.Env
-
-	slog.Debug(
-		"running a collector",
-		slog.String("name", collector.Name),
-		slog.String("version", collector.Version),
-		slog.String("exec", fmt.Sprintf("%s %s", collector.Exec, strings.Join(collector.ExecArgs, " "))),
-		slog.String("environment", strings.Join(collector.Env, " ")),
-	)
+	//if _, err := internal.GetCurrentInventoryHost(); err != nil {
+	//	return err
+	//}
 
 	spin := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
 	if isRichOutput(arguments) {
 		spin.Suffix = fmt.Sprintf(" waiting for '%s' to collect its data", collector.Name)
 		spin.Start()
 	}
-	cmdErr := cmd.Run()
+	archiveDirectory, err := collector.Collect()
 	if isRichOutput(arguments) {
 		spin.Stop()
 	}
-
-	if cmdErr != nil {
-		return app.NewError(
-			nil,
-			errors.Join(cmdErr, errors.New(stderr.String())),
-			"Could not run collector.",
-		)
+	if err != nil {
+		return err
 	}
-	path := strings.TrimSpace(stdout.String())
-	defer os.Remove(path)
+	defer os.RemoveAll(archiveDirectory)
 
-	archive := ingress.Archive{ContentType: collector.ContentType, Path: path}
+	if isRichOutput(arguments) {
+		spin.Suffix = " compressing archive"
+		spin.Start()
+	}
+	archiveFile, err := internal.CompressDirectory(archiveDirectory)
+	if isRichOutput(arguments) {
+		spin.Stop()
+	}
+	if err != nil {
+		return err
+	}
+	defer os.Remove(archiveFile)
+
+	archive := ingress.Archive{ContentType: collector.ContentType, Path: archiveFile}
 
 	if isRichOutput(arguments) {
 		spin.Suffix = " uploading archive"
@@ -78,7 +69,6 @@ func runCollector(arguments Arguments) app.HumanError {
 	if isRichOutput(arguments) {
 		spin.Stop()
 	}
-
 	if err != nil {
 		return err
 	}
