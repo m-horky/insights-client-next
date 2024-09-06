@@ -17,7 +17,7 @@ func runStatus() app.HumanError {
 		return err
 	}
 
-	fmt.Println("This host has been registered.")
+	fmt.Println("This host is registered.")
 	fmt.Printf("* Insights Client ID:    %s\n", host.InsightsClientID)
 	fmt.Printf("* Insights Inventory ID: %s\n", host.InsightsInventoryID)
 	fmt.Printf("* Organization ID:       %s\n", host.OrganizationID)
