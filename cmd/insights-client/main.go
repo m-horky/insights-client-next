@@ -228,31 +228,46 @@ type Arguments struct {
 	Register         bool
 	Unregister       bool
 	Status           bool
+	Checkin          bool
 	DisplayName      string
 	ResetDisplayName bool
 	AnsibleHost      string
 	ResetAnsibleHost bool
+	Group            string
 	Collector        string
+	CollectorOptions []string
 	CollectorList    bool
+	Payload          string
+	ContentType      string
+	OutputDir        string
+	OutputFile       string
 	Help             bool
 	Debug            bool
 	Format           internal.Format
 }
 
 // parseCLI converts the cli.Command object into a clean structure.
-func parseCLI(cmd *cli.Command) (*Arguments, error) {
+func parseCLI(cmd *cli.Command) (*Arguments, app.HumanError) {
 	arguments := &Arguments{}
 
 	// flags
 	arguments.Format = internal.MustParseFormat(cmd.String("format"))
 	arguments.Debug = cmd.IsSet("debug")
+	arguments.Group = cmd.String("group")
+	arguments.CollectorOptions = cmd.StringSlice("collector-option")
+	arguments.OutputDir = cmd.String("output-dir")
+	arguments.OutputFile = cmd.String("output-file")
 
 	// display deprecation notices
-	if cmd.Bool("test-connection") {
-		fmt.Println("Notice: command 'test-connection' is deprecated and will be removed in future releases. Use 'status' instead.")
+	for oldCmd, newCmd := range map[string]string{"test-connection": "status", "compliance": "--collector compliance"} {
+		if cmd.IsSet(oldCmd) {
+			fmt.Printf("Notice: Command '%s' is deprecated, use '%s' instead.\n", oldCmd, newCmd)
+		}
 	}
-	if cmd.Bool("compliance") {
-		fmt.Println("Notice: command 'compliance' is deprecated and will be removed in future releases. Use '--collector compliance' instead.")
+	for _, ignored := range []string{"retry", "validate", "quiet", "silent", "conf", "compressor", "offline", "logging-file"} {
+		if cmd.IsSet(ignored) {
+			fmt.Printf("Notice: Command '%s' is deprecated and has no effect.\n", ignored)
+		}
 	}
 
 	// client
@@ -266,6 +281,10 @@ func parseCLI(cmd *cli.Command) (*Arguments, error) {
 	}
 	if cmd.Bool("status") || cmd.Bool("test-connection") {
 		arguments.Status = true
+		return arguments, nil
+	}
+	if cmd.Bool("checkin") {
+		arguments.Checkin = true
 		return arguments, nil
 	}
 
@@ -300,6 +319,14 @@ func parseCLI(cmd *cli.Command) (*Arguments, error) {
 		arguments.Collector = "compliance"
 		return arguments, nil
 	}
+	if (cmd.IsSet("payload") && !cmd.IsSet("content-type")) || (!cmd.IsSet("payload") && cmd.IsSet("content-type")) {
+		return nil, app.NewError(nil, nil, "Both --payload and --content-type have to be set.")
+	}
+	if cmd.IsSet("payload") && cmd.IsSet("payload") {
+		arguments.Payload = cmd.String("payload")
+		arguments.ContentType = cmd.String("content-type")
+		return arguments, nil
+	}
 
 	slog.Debug("no command supplied, assuming 'help'")
 	arguments.Help = true
@@ -309,7 +336,7 @@ func parseCLI(cmd *cli.Command) (*Arguments, error) {
 func runCLI(_ context.Context, cmd *cli.Command) error {
 	arguments, err := parseCLI(cmd)
 	if err != nil {
-		return app.NewError(app.ErrInput, err, "Could not parse the input.")
+		return err
 	}
 
 	if arguments.Help {
