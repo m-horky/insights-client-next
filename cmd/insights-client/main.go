@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 
 	"github.com/urfave/cli/v3"
 
@@ -75,6 +76,7 @@ func initServices() {
 
 func main() {
 	cmd := buildCLI()
+	cmd.CustomRootCommandHelpTemplate = buildHelpText()
 
 	slog.Debug("started", slog.Any("args", os.Args))
 	if err := cmd.Run(context.Background(), os.Args); err != nil {
@@ -89,36 +91,120 @@ func main() {
 	slog.Debug("finished")
 }
 
+type commandCategory struct {
+	Name     string
+	Commands []cli.Flag
+}
+
+var commands = []commandCategory{
+	{
+		Name: "HOST",
+		Commands: []cli.Flag{
+			&cli.BoolFlag{Name: "register", Usage: "register the host"},
+			&cli.BoolFlag{Name: "unregister", Usage: "unregister the host"},
+			&cli.BoolFlag{Name: "status", Usage: "display host status"},
+		},
+	},
+	{
+		Name: "INVENTORY",
+		Commands: []cli.Flag{
+			&cli.BoolFlag{Name: "checkin", Usage: "send lightweight check-in notification"},
+			&cli.StringFlag{Name: "display-name", Usage: "set display name of a host"},
+			&cli.StringFlag{Name: "ansible-host", Usage: "set Ansible display name of a host"},
+			&cli.StringFlag{Name: "group", Usage: "add system to Inventory group"},
+		},
+	},
+	{
+		Name: "DATA COLLECTION",
+		Commands: []cli.Flag{
+			&cli.StringFlag{Name: "collector", Usage: "run collector", Action: verifyCollector},
+			&cli.BoolFlag{Name: "collector-list", Aliases: []string{"list-collectors"}, Usage: "list collectors"},
+			&cli.StringFlag{Name: "content-type", Usage: "content type for manual upload"},
+			&cli.StringFlag{Name: "payload", Usage: "archive path for manual upload"},
+			&cli.StringSliceFlag{Name: "collector-option", Aliases: []string{"opt"}, Usage: "collector option"},
+			&cli.StringFlag{Name: "output-dir", Usage: "do not upload, collect into directory"},
+			&cli.StringFlag{Name: "output-file", Usage: "do not upload, collect into file"},
+		},
+	},
+	{
+		Name: "GLOBAL FLAGS",
+		Commands: []cli.Flag{
+			&cli.StringFlag{Name: "format", Value: "human", Action: verifyFormat, Usage: "change output format"},
+			&cli.BoolFlag{Name: "debug", Usage: "print logs to stderr instead of a log file"},
+		},
+	},
+	{
+		Name: "DEPRECATED",
+		Commands: []cli.Flag{
+			&cli.UintFlag{Name: "retry", Usage: "ignored"},
+			&cli.BoolFlag{Name: "validate", Usage: "ignored"},
+			&cli.BoolFlag{Name: "quiet", Usage: "ignored"},
+			&cli.BoolFlag{Name: "silent", Usage: "ignored"},
+			&cli.StringFlag{Name: "conf", Aliases: []string{"c"}, Usage: "ignored"},
+			&cli.StringFlag{Name: "compressor", Usage: "ignored"},
+			&cli.BoolFlag{Name: "offline", Usage: "ignored"},
+			&cli.StringFlag{Name: "logging-file", Usage: "ignored"},
+			&cli.StringFlag{Name: "diagnosis", Usage: "alias for '--collector advisor --opt=diagnosis'"},
+			&cli.BoolFlag{Name: "check-results", Usage: "alias for '--collector advisor --opt=check-results'"},
+			&cli.BoolFlag{Name: "show-results", Usage: "alias for '--collector advisor --opt=show-results'"},
+			&cli.BoolFlag{Name: "list-specs", Usage: "alias for '--collector advisor --opt=list-specs'"},
+			&cli.BoolFlag{Name: "compliance", Usage: "alias for '--collector compliance'"},
+			&cli.BoolFlag{Name: "test-connection", Usage: "alias for '--status'"},
+			&cli.BoolFlag{Name: "no-upload", Usage: fmt.Sprintf("alias for '--output-file %sarchive-`date +%%s`'", collectors.ArchiveDirectory)},
+			&cli.BoolFlag{Name: "keep-archive", Usage: fmt.Sprintf("alias for '--output-file %sarchive-`date +%%s`'", collectors.ArchiveDirectory)},
+			&cli.BoolFlag{Name: "support", Usage: "alias for 'sosreport'"},
+			&cli.BoolFlag{Name: "enable-schedule", Usage: "alias for '--register'"},
+			&cli.BoolFlag{Name: "disable-schedule", Usage: "alias for '--unregister'"},
+		},
+	},
+}
+
+func buildHelpText() string {
+	help := []string{`{{.Name}}, version {{.Version}}`}
+
+	maxFlagLength := 0
+	for _, cmdGrp := range commands {
+		for _, cmd := range cmdGrp.Commands {
+			if len(cmd.Names()[0]) > maxFlagLength {
+				maxFlagLength = len(cmd.Names()[0])
+			}
+		}
+	}
+
+	for _, cmdGrp := range commands {
+		help = append(help, ``)
+		help = append(help, fmt.Sprintf("Category: %s", cmdGrp.Name))
+
+		for _, cmd := range cmdGrp.Commands {
+			// left-justify flag names
+			help = append(help, fmt.Sprintf(
+				"  --%s%s  %s",
+				cmd.Names()[0],
+				strings.Repeat(" ", maxFlagLength-len(cmd.Names()[0])),
+				cmd.(cli.DocGenerationFlag).GetUsage(),
+			))
+		}
+	}
+
+	return strings.Join(help, "\n") + "\n"
+}
+
 func buildCLI() *cli.Command {
+	var flags []cli.Flag
+	for _, commandGroup := range commands {
+		for _, cmd := range commandGroup.Commands {
+			flags = append(flags, cmd)
+		}
+	}
+
 	return &cli.Command{
 		Name:            "insights-client",
 		HideHelpCommand: true,
 		Version:         internal.Version,
 		Usage:           "Upload data to Red Hat Insights",
 		UsageText:       fmt.Sprintf("%s COMMAND [FLAGS...]", "insights-client"),
-		Flags: []cli.Flag{
-			// client
-			&cli.BoolFlag{Name: "register", Category: "host", Usage: "register the host"},
-			&cli.BoolFlag{Name: "unregister", Category: "host", Usage: "unregister the host"},
-			&cli.BoolFlag{Name: "status", Category: "host", Usage: "display host status"},
-
-			// inventory
-			&cli.StringFlag{Name: "display-name", Category: "inventory", Usage: "set display name of a host"},
-			&cli.StringFlag{Name: "ansible-host", Category: "inventory", Usage: "set Ansible display name of a host"},
-
-			// data collection
-			&cli.StringFlag{Name: "collector", Aliases: []string{"m"}, Category: "data collection", Usage: "run collector", Action: verifyCollector},
-			&cli.BoolFlag{Name: "collector-list", Aliases: []string{"list-collectors"}, Category: "data collection", Usage: "list collectors"},
-
-			// deprecated
-			&cli.BoolFlag{Name: "test-connection", Category: "deprecated", Usage: "alias for '--status'"},
-			&cli.BoolFlag{Name: "compliance", Category: "deprecated", Usage: "alias for '--collector compliance'"},
-
-			// flags
-			&cli.StringFlag{Name: "format", Category: "global flags", Value: "human", Action: verifyFormat, Usage: "change output format"},
-			&cli.BoolFlag{Name: "debug", Category: "global flags", Usage: "print logs to stderr instead of a log file"},
-		},
-		Action: runCLI,
+		Flags:           flags,
+		Action:          runCLI,
 	}
 }
 
