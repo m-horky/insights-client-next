@@ -6,7 +6,7 @@ import (
 
 // isRichOutput detects whether we can pretty-print output
 // (animated spinners, ...).
-func isRichOutput(arguments Arguments) bool {
+func isRichOutput(arguments *Arguments) bool {
 	if arguments.Debug {
 		return false
 	}

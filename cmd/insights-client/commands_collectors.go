@@ -3,9 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
-	"time"
 
-	"github.com/briandowns/spinner"
 	_ "github.com/briandowns/spinner"
 
 	"github.com/m-horky/insights-client-next/api/ingress"
@@ -22,54 +20,25 @@ func runCollectorList() app.HumanError {
 	return nil
 }
 
-func runCollector(arguments Arguments) app.HumanError {
-	collector, err := collectors.GetCollector(arguments.Collector)
-	if err != nil {
+func runCollector(arguments *Arguments) app.HumanError {
+	if _, err := internal.GetCurrentInventoryHost(); err != nil {
 		return err
 	}
 
-	//if _, err := internal.GetCurrentInventoryHost(); err != nil {
-	//	return err
-	//}
-
-	spin := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
-	if isRichOutput(arguments) {
-		spin.Suffix = fmt.Sprintf(" waiting for '%s' to collect its data", collector.Name)
-		spin.Start()
-	}
-	archiveDirectory, err := collector.Collect()
-	if isRichOutput(arguments) {
-		spin.Stop()
-	}
+	archiveDirectory, archiveContentType, err := collectArchive(arguments)
 	if err != nil {
 		return err
 	}
 	defer os.RemoveAll(archiveDirectory)
 
-	if isRichOutput(arguments) {
-		spin.Suffix = " compressing archive"
-		spin.Start()
-	}
-	archiveFile, err := internal.CompressDirectory(archiveDirectory)
-	if isRichOutput(arguments) {
-		spin.Stop()
-	}
+	archiveFile, err := compressArchive(archiveDirectory, arguments)
 	if err != nil {
 		return err
 	}
 	defer os.Remove(archiveFile)
 
-	archive := ingress.Archive{ContentType: collector.ContentType, Path: archiveFile}
-
-	if isRichOutput(arguments) {
-		spin.Suffix = " uploading archive"
-		spin.Start()
-	}
-	_, err = ingress.UploadArchive(archive)
-	if isRichOutput(arguments) {
-		spin.Stop()
-	}
-	if err != nil {
+	archive := ingress.Archive{ContentType: archiveContentType, Path: archiveFile}
+	if err = uploadArchive(archive, arguments); err != nil {
 		return err
 	}
 

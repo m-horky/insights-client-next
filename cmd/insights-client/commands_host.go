@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/m-horky/insights-client-next/api/ingress"
 	"github.com/m-horky/insights-client-next/api/inventory"
 	"github.com/m-horky/insights-client-next/app"
 	"github.com/m-horky/insights-client-next/collectors"
@@ -41,10 +42,19 @@ func runRegister(arguments *Arguments) app.HumanError {
 		slog.Debug("created /etc/insights-client/machine-id")
 	}
 
+	// run the collection
 	arguments.Collector = collectors.GetDefaultCollector().Name
-	// TODO This is awful hack, abstract most of the collection into a separate method :)
-	err = runCollector(*arguments)
+	archiveDirectory, archiveContentType, err := collectArchive(arguments)
 	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(archiveDirectory)
+	archiveFile, err := compressArchive(archiveDirectory, arguments)
+	if err != nil {
+		return err
+	}
+	defer os.Remove(archiveFile)
+	if err = uploadArchive(ingress.Archive{ContentType: archiveContentType, Path: archiveFile}, arguments); err != nil {
 		return err
 	}
 
@@ -63,8 +73,6 @@ func runRegister(arguments *Arguments) app.HumanError {
 	} else {
 		slog.Debug("created /etc/insights-client/.registered file")
 	}
-
-	// TODO Write /etc/rhsm/facts/insights.facts
 
 	fmt.Println("This host is now registered. Visit https://console.redhat.com/insights/ to see the Red Hat Insights console.")
 
