@@ -29,7 +29,7 @@ type Host struct {
 	OrganizationID        string                       `json:"org_id"`
 	DisplayName           string                       `json:"display_name"`
 	AnsibleHost           string                       `json:"ansible_host"`
-	Groups                []string                     `json:"groups"`
+	Groups                []map[string]string          `json:"groups"`
 	Tags                  []any                        `json:"tags"`
 	Facts                 []any                        `json:"facts"`
 	Reporter              string                       `json:"reporter"`
