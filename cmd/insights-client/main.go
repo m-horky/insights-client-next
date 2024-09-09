@@ -160,6 +160,8 @@ var commands = []commandCategory{
 }
 
 func buildHelpText() string {
+	// FIXME Can we make this not break in narrow terminals?
+
 	help := []string{`{{.Name}}, version {{.Version}}`}
 
 	maxFlagLength := 0
