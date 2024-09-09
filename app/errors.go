@@ -14,6 +14,7 @@ var (
 
 type HumanError interface {
 	Error() string
+	Is(error) bool
 	Human() string
 }
 
@@ -35,6 +36,7 @@ func NewError(typ, original error, human string) *Error {
 	return &Error{typ: typ, original: original, human: human}
 }
 
+// Error returns complex message created from both the internal type and external reason.
 func (e *Error) Error() string {
 	var messages []string
 	if e.typ != nil {
@@ -49,6 +51,12 @@ func (e *Error) Error() string {
 	return message
 }
 
+// Is compares an input error with the internal error type.
+func (e *Error) Is(err error) bool {
+	return errors.Is(err, e.typ)
+}
+
+// Human returns the human-readable version of an error.
 func (e *Error) Human() string {
 	return "Error: " + e.human
 }
