@@ -246,51 +246,6 @@ type Arguments struct {
 	Format           internal.Format
 }
 
-func runCLI(_ context.Context, cmd *cli.Command) error {
-	if err := validateCLI(cmd); err != nil {
-		return err
-	}
-	arguments, err := parseCLI(cmd)
-	if err != nil {
-		return err
-	}
-
-	if arguments.Help {
-		_ = cli.ShowAppHelp(cmd)
-		return nil
-	}
-
-	// ask for elevated privileges
-	if os.Geteuid() != 0 {
-		return app.NewError(app.ErrPermissions, nil, "This command has to be run with superuser privileges.")
-	}
-
-	// handle commands
-	if arguments.Register {
-		return runRegister(arguments)
-	}
-	if arguments.Unregister {
-		return runUnregister()
-	}
-	if arguments.Status {
-		return runStatus()
-	}
-	if arguments.DisplayName != "" || arguments.ResetDisplayName {
-		return runDisplayName(arguments)
-	}
-	if arguments.AnsibleHost != "" || arguments.ResetAnsibleHost {
-		return runAnsibleHostname(arguments)
-	}
-	if arguments.CollectorList {
-		return runCollectorList()
-	}
-	if arguments.Collector != "" {
-		return runCollector(arguments)
-	}
-
-	return app.NewError(nil, nil, "Not implemented.")
-}
-
 // validateCLI performs input validation.
 //
 // It shows notices for commands that are deprecated.
@@ -340,7 +295,8 @@ func validateCLI(cmd *cli.Command) app.HumanError {
 	}
 	// validate input: can't be used together
 	for _, flags := range [][]string{
-		{"register", "unregister", "status", "checkin", "group", "collector", "collector-list", "content-type", "payload"},
+		{"register", "unregister", "status", "checkin", "collector", "collector-list", "content-type", "payload"},
+		{"group", "unregister", "status", "checkin", "collector", "collector-list", "content-type", "payload"},
 		{"register", "unregister", "collector-option"},
 		{"output-dir", "output-file"},
 	} {
@@ -367,27 +323,27 @@ func parseCLI(cmd *cli.Command) (*Arguments, app.HumanError) {
 	// flags
 	arguments.Format = internal.MustParseFormat(cmd.String("format"))
 	arguments.Debug = cmd.IsSet("debug")
-	arguments.Group = cmd.String("group")
 	arguments.CollectorOptions = cmd.StringSlice("collector-option")
 	arguments.OutputDir = cmd.String("output-dir")
 	arguments.OutputFile = cmd.String("output-file")
 
 	// client
-	if cmd.Bool("register") {
+	if cmd.IsSet("register") {
 		arguments.Register = true
 		arguments.DisplayName = cmd.String("display-name")
 		arguments.AnsibleHost = cmd.String("ansible-host")
+		arguments.Group = cmd.String("group")
 		return arguments, nil
 	}
-	if cmd.Bool("unregister") {
+	if cmd.IsSet("unregister") {
 		arguments.Unregister = true
 		return arguments, nil
 	}
-	if cmd.Bool("status") || cmd.Bool("test-connection") {
+	if cmd.IsSet("status") || cmd.IsSet("test-connection") {
 		arguments.Status = true
 		return arguments, nil
 	}
-	if cmd.Bool("checkin") {
+	if cmd.IsSet("checkin") {
 		arguments.CheckIn = true
 		return arguments, nil
 	}
@@ -407,6 +363,10 @@ func parseCLI(cmd *cli.Command) (*Arguments, app.HumanError) {
 	}
 	if cmd.IsSet("ansible-host") {
 		arguments.ResetAnsibleHost = true
+		return arguments, nil
+	}
+	if cmd.IsSet("group") {
+		arguments.Group = cmd.String("group")
 		return arguments, nil
 	}
 
@@ -432,4 +392,52 @@ func parseCLI(cmd *cli.Command) (*Arguments, app.HumanError) {
 	slog.Debug("no command supplied, assuming 'help'")
 	arguments.Help = true
 	return arguments, nil
+}
+
+func runCLI(_ context.Context, cmd *cli.Command) error {
+	if err := validateCLI(cmd); err != nil {
+		return err
+	}
+	arguments, err := parseCLI(cmd)
+	if err != nil {
+		return err
+	}
+
+	if arguments.Help {
+		_ = cli.ShowAppHelp(cmd)
+		return nil
+	}
+
+	// ask for elevated privileges
+	if os.Geteuid() != 0 {
+		return app.NewError(app.ErrPermissions, nil, "This command has to be run with superuser privileges.")
+	}
+
+	// handle commands
+	if arguments.Register {
+		return runRegister(arguments)
+	}
+	if arguments.Unregister {
+		return runUnregister()
+	}
+	if arguments.Status {
+		return runStatus()
+	}
+	if arguments.DisplayName != "" || arguments.ResetDisplayName {
+		return runDisplayName(arguments)
+	}
+	if arguments.AnsibleHost != "" || arguments.ResetAnsibleHost {
+		return runAnsibleHostname(arguments)
+	}
+	if len(arguments.Group) > 0 {
+		return runGroup(arguments)
+	}
+	if arguments.CollectorList {
+		return runCollectorList()
+	}
+	if arguments.Collector != "" {
+		return runCollector(arguments)
+	}
+
+	return app.NewError(nil, nil, "Not implemented.")
 }

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/briandowns/spinner"
+	"gopkg.in/yaml.v3"
 
 	"github.com/m-horky/insights-client-next/api/ingress"
 	"github.com/m-horky/insights-client-next/app"
@@ -32,6 +33,29 @@ func writeTimestampFile(path string) error {
 	now := time.Now()
 	timestamp := now.Format("2006-01-02T15:04:05.999Z07:00")
 	return os.WriteFile(path, []byte(timestamp), 0775)
+}
+
+func writeInventoryGroup(group string) app.HumanError {
+	rawData, err := os.ReadFile("/etc/insights-client/tags.yaml")
+	if err != nil {
+		return app.NewError(app.ErrInput, err, "Could not open tags file.")
+	}
+
+	data := make(map[string]any)
+	if err = yaml.Unmarshal(rawData, &data); err != nil {
+		return app.NewError(nil, err, "Could not read tags file.")
+	}
+
+	data["group"] = group
+
+	newData, err := yaml.Marshal(data)
+	if err != nil {
+		return app.NewError(nil, err, "Could not update tags file.")
+	}
+	if err = os.WriteFile("/etc/insights-client/tags.yaml", newData, 0644); err != nil {
+		return app.NewError(nil, err, "Could not update tags file.")
+	}
+	return nil
 }
 
 // collectArchive instructs a collector to gather data into a directory.

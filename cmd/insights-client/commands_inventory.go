@@ -66,3 +66,16 @@ func runAnsibleHostname(arguments *Arguments) app.HumanError {
 	}
 	return nil
 }
+
+func runGroup(arguments *Arguments) app.HumanError {
+	slog.Debug("Setting Inventory group", slog.String("value", arguments.Group))
+
+	if err := writeInventoryGroup(arguments.Group); err != nil {
+		return err
+	}
+
+	fmt.Println("Tags file updated.")
+	return nil
+
+	// TODO Run minimal collection with just the tags data in the archive?
+}

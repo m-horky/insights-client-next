@@ -42,6 +42,16 @@ func runRegister(arguments *Arguments) app.HumanError {
 		slog.Debug("created /etc/insights-client/machine-id")
 	}
 
+	if len(arguments.Group) > 0 {
+		if err = writeInventoryGroup(arguments.Group); err != nil {
+			return err
+		}
+		fmt.Println("Tags file updated.")
+	}
+
+	// TODO Handle --display-name
+	// TODO Handle --ansible-host
+
 	// run the collection
 	arguments.Collector = collectors.GetDefaultCollector().Name
 	archiveDirectory, archiveContentType, err := collectArchive(arguments)

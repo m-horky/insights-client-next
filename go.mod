@@ -3,12 +3,13 @@ module github.com/m-horky/insights-client-next
 go 1.22.6
 
 require (
+	github.com/briandowns/spinner v1.23.1
 	github.com/gookit/ini/v2 v2.2.3
 	github.com/urfave/cli/v3 v3.0.0-alpha9
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
-	github.com/briandowns/spinner v1.23.1 // indirect
 	github.com/fatih/color v1.7.0 // indirect
 	github.com/gookit/color v1.5.4 // indirect
 	github.com/gookit/goutil v0.6.15 // indirect
