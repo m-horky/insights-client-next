@@ -15,6 +15,18 @@ import (
 
 var spin = spinner.New(spinner.CharSets[14], 100*time.Millisecond)
 
+// isRichOutput detects whether we can pretty-print output
+// (animated spinners, ...).
+func isRichOutput(arguments *Arguments) bool {
+	if arguments.Debug {
+		return false
+	}
+	if arguments.Format != internal.Human {
+		return false
+	}
+	return true
+}
+
 // writeTimestampFile saves current timestamp into a file.
 func writeTimestampFile(path string) error {
 	now := time.Now()

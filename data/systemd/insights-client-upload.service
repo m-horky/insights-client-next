@@ -7,7 +7,7 @@ ConditionPathExists=/etc/insights-client/.registered
 
 [Service]
 Type=exec
-ExecStart=/usr/libexec/insights-client/insights-client-upload
+ExecStart=/usr/bin/insights-client
 
 Restart=on-failure
 RestartSec=1h
