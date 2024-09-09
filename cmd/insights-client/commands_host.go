@@ -39,7 +39,7 @@ func runRegister(arguments *Arguments) app.HumanError {
 	if err := os.WriteFile("/etc/insights-client/machine-id", []byte(rhsm), 0755); err != nil {
 		slog.Error("could not create machine-id file", slog.String("error", err.Error()))
 	} else {
-		slog.Debug("created /etc/insights-client/machine-id")
+		slog.Debug("created /etc/insights-client/machine-id", slog.String("value", rhsm))
 	}
 
 	if len(arguments.Group) > 0 {
@@ -98,48 +98,19 @@ func runUnregister() app.HumanError {
 		return err
 	}
 
-	wasUnregistered := false
 	// delete from Inventory
 	if host != nil {
-		if err := inventory.DeleteHost(host.InsightsInventoryID); err == nil {
-			wasUnregistered = true
+		err = inventory.DeleteHost(host.InsightsInventoryID)
+		if err != nil && !err.Is(inventory.ErrNoHost) {
+			return err
 		}
 	}
 
-	// delete .registered
-	if err := os.Remove("/etc/insights-client/.registered"); err != nil {
-		if !os.IsNotExist(err) {
-			slog.Error("could not remove /etc/insights-client/.registered", slog.String("error", err.Error()))
-		}
-	} else {
-		slog.Debug("deleted /etc/insights-client/.registered")
-		wasUnregistered = true
+	// delete and update local files
+	err = unregisterLocally()
+	if err != nil {
+		return err
 	}
-
-	// delete machine-id
-	if err := os.Remove("/etc/insights-client/machine-id"); err != nil {
-		if !os.IsNotExist(err) {
-			slog.Error("could not remove /etc/insights-client/machine-id", slog.String("error", err.Error()))
-		}
-	} else {
-		slog.Debug("deleted /etc/insights-client/machine-id")
-		wasUnregistered = true
-	}
-
-	// write .unregistered
-	if wasUnregistered {
-		if err := writeTimestampFile("/etc/insights-client/.unregistered"); err != nil {
-			slog.Error("could not create .unregistered file", slog.String("error", err.Error()))
-		} else {
-			slog.Debug("created /etc/insights-client/.unregistered file")
-		}
-	}
-
-	if wasUnregistered {
-		fmt.Println("This host was unregistered.")
-	} else {
-		return app.NewError(nil, nil, "This host was not registered.")
-	}
-
+	fmt.Println("This host was unregistered.")
 	return nil
 }

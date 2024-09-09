@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"time"
 
@@ -93,4 +94,36 @@ func uploadArchive(archive ingress.Archive, arguments *Arguments) app.HumanError
 	}
 	_, err := ingress.UploadArchive(archive)
 	return err
+}
+
+// unregisterLocally deletes local cache files.
+//
+// It does not call the Insights API.
+func unregisterLocally() app.HumanError {
+	dotRegistered := "/etc/insights-client/.registered"
+	machineId := "/etc/insights-client/machine-id"
+	dotUnregistered := "/etc/insights-client/.unregistered"
+	wasRegistered := false
+
+	for _, fileToDelete := range []string{dotRegistered, machineId} {
+		if err := os.Remove(fileToDelete); err != nil {
+			if !os.IsNotExist(err) {
+				slog.Error(fmt.Sprintf("could not remove %s", fileToDelete), slog.String("error", err.Error()))
+			}
+		} else {
+			slog.Debug(fmt.Sprintf("removed %s", fileToDelete))
+			wasRegistered = true
+		}
+	}
+
+	if wasRegistered {
+		if err := writeTimestampFile(dotUnregistered); err != nil {
+			slog.Error(fmt.Sprintf("could not create %s", dotUnregistered), slog.String("error", err.Error()))
+		} else {
+			slog.Debug(fmt.Sprintf("created %s", dotUnregistered))
+		}
+		return nil
+	} else {
+		return app.NewError(nil, nil, "This host was not registered.")
+	}
 }
