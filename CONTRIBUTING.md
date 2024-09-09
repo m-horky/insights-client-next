@@ -21,17 +21,16 @@ For output:
 - Include prefix for non-final messages:
   - `Notice` for informational messages (e.g. `Notice: Command 'foo' is deprecated, use 'bar' instead.`).
   - `Warning` for handled errors.
-  - `Error` for fatal errors preventing further runtime (e.g. `Error: Could not run collection.`).
+  - `Error`s have the `Error` prefix applied automatically. Return `app.HumanError` to keep as much context as possible.
 - Start the sentence with a capital letter.
 - Do not include long explanations or internal errors. Logs are always in English and output is/will be translated into the current locale, mixing them would cause inconsistencies.
 - Do not print to standard output in `public` or `private` packages. All `fmt.Print` should be done by packages in `cmd`. 
 
 For logging:
 
-- Log errors as `slog.String("error", err.Error())`.
-- Do not log errors everywhere.
-  - Always log the first error that comes from Go stdlib or a 3rd party library.
-  - Do not add log statement for error coming from our code: it has been logged anywhere.
+- Log error content as `slog.String("error", err.Error())`.
+- Log on places where external code touches internal.
+  - You can more or less tell by the `app.HumanError`: if we already have a rich error, we don't need more context.
   - You are allowed to do so if it provides additional context that might not be obvious from the previous log statements (e.g. API implementation in `public/insights/api` complaining about an error from generic `internal/api`).
 
   
