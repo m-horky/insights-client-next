@@ -117,7 +117,7 @@ var commands = []commandCategory{
 	{
 		Name: "DATA COLLECTION",
 		Commands: []cli.Flag{
-			&cli.StringFlag{Name: "collector", Usage: "run collector", Action: verifyCollector},
+			&cli.StringFlag{Name: "collector", Usage: "run collector", Action: validateCollector},
 			&cli.BoolFlag{Name: "collector-list", Aliases: []string{"list-collectors"}, Usage: "list collectors"},
 			&cli.StringFlag{Name: "content-type", Usage: "content type for manual upload"},
 			&cli.StringFlag{Name: "payload", Usage: "archive path for manual upload"},
@@ -129,7 +129,7 @@ var commands = []commandCategory{
 	{
 		Name: "GLOBAL FLAGS",
 		Commands: []cli.Flag{
-			&cli.StringFlag{Name: "format", Value: "human", Action: verifyFormat, Usage: "change output format"},
+			&cli.StringFlag{Name: "format", Value: "human", Action: validateFormat, Usage: "change output format"},
 			&cli.BoolFlag{Name: "debug", Usage: "print logs to stderr instead of a log file"},
 		},
 	},
@@ -208,7 +208,7 @@ func buildCLI() *cli.Command {
 	}
 }
 
-func verifyCollector(_ context.Context, _ *cli.Command, collector string) error {
+func validateCollector(_ context.Context, _ *cli.Command, collector string) error {
 	if _, err := collectors.GetCollector(collector); err != nil {
 		fmt.Printf("Error: invalid collector: '%s'\n", collector)
 		return err
@@ -216,7 +216,7 @@ func verifyCollector(_ context.Context, _ *cli.Command, collector string) error 
 	return nil
 }
 
-func verifyFormat(_ context.Context, _ *cli.Command, format string) error {
+func validateFormat(_ context.Context, _ *cli.Command, format string) error {
 	if _, err := internal.ParseFormat(format); err != nil {
 		fmt.Printf("Error: invalid format: '%s'\n", format)
 		return fmt.Errorf("invalid format: '%s'", format)
