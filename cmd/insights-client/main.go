@@ -103,12 +103,12 @@ var commands = []commandCategory{
 			&cli.BoolFlag{Name: "register", Usage: "register the host"},
 			&cli.BoolFlag{Name: "unregister", Usage: "unregister the host"},
 			&cli.BoolFlag{Name: "status", Usage: "display host status"},
+			&cli.BoolFlag{Name: "checkin", Usage: "send lightweight check-in notification"},
 		},
 	},
 	{
 		Name: "INVENTORY",
 		Commands: []cli.Flag{
-			&cli.BoolFlag{Name: "checkin", Usage: "send lightweight check-in notification"},
 			&cli.StringFlag{Name: "display-name", Usage: "set display name of a host"},
 			&cli.StringFlag{Name: "ansible-host", Usage: "set Ansible display name of a host"},
 			&cli.StringFlag{Name: "group", Usage: "add system to Inventory group"},
@@ -228,7 +228,7 @@ type Arguments struct {
 	Register         bool
 	Unregister       bool
 	Status           bool
-	Checkin          bool
+	CheckIn          bool
 	DisplayName      string
 	ResetDisplayName bool
 	AnsibleHost      string
@@ -285,7 +285,7 @@ func runCLI(_ context.Context, cmd *cli.Command) error {
 		return runCollectorList()
 	}
 	if arguments.Collector != "" {
-		return runCollector(*arguments)
+		return runCollector(arguments)
 	}
 
 	return app.NewError(nil, nil, "Not implemented.")
@@ -375,6 +375,8 @@ func parseCLI(cmd *cli.Command) (*Arguments, app.HumanError) {
 	// client
 	if cmd.Bool("register") {
 		arguments.Register = true
+		arguments.DisplayName = cmd.String("display-name")
+		arguments.AnsibleHost = cmd.String("ansible-host")
 		return arguments, nil
 	}
 	if cmd.Bool("unregister") {
@@ -386,7 +388,7 @@ func parseCLI(cmd *cli.Command) (*Arguments, app.HumanError) {
 		return arguments, nil
 	}
 	if cmd.Bool("checkin") {
-		arguments.Checkin = true
+		arguments.CheckIn = true
 		return arguments, nil
 	}
 
