@@ -295,11 +295,18 @@ func validateCLI(cmd *cli.Command) app.HumanError {
 			}
 		}
 	}
+	// FIXME This works but isn't nice, is there a better way?
 	// validate input: can't be used together
 	for _, flags := range [][]string{
-		{"register", "unregister", "status", "checkin", "collector", "collector-list", "content-type", "payload"},
+		// top-level commands with other top-level commands
+		{"register", "unregister", "status", "checkin", "collector", "collector-list"},
+		// top-level commands with collector modifiers
+		{"register", "unregister", "status", "checkin", "collector-option"},
+		// top-level commands with upload modifiers
+		{"register", "unregister", "status", "checkin", "output-dir", "output-file"},
+		// 'group' can only be used alone or with 'register'
 		{"group", "unregister", "status", "checkin", "collector", "collector-list", "content-type", "payload"},
-		{"register", "unregister", "collector-option"},
+		// collection flags
 		{"output-dir", "output-file"},
 	} {
 		var usedFlags []string

@@ -12,11 +12,15 @@ import (
 	"github.com/m-horky/insights-client-next/app"
 )
 
-func CompressDirectory(path string) (string, app.HumanError) {
-	archive := fmt.Sprintf("%s.tar.xz", path)
+func CompressDirectory(directory string) (string, app.HumanError) {
+	archive := fmt.Sprintf("%s.tar.xz", directory)
 
+	return CompressDirectoryToPath(directory, archive)
+}
+
+func CompressDirectoryToPath(directory, archive string) (string, app.HumanError) {
 	var stderr bytes.Buffer
-	cmd := exec.Command("tar", "--create", "--xz", "--sparse", "--file", archive, path)
+	cmd := exec.Command("tar", "--create", "--xz", "--sparse", "--file", archive, directory)
 	cmd.Stderr = &stderr
 
 	slog.Debug("compressing archive", slog.String("command", strings.Join(cmd.Args, " ")))

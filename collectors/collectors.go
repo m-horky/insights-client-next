@@ -46,7 +46,7 @@ func GetCollector(name string) (*Collector, app.HumanError) {
 	return nil, app.NewError(ErrNoCollector, nil, "Collector not found.")
 }
 
-// Collect invokes the data collectors.
+// Collect invokes the data collector.
 //
 // Returns path to a directory with collected data.
 func (c *Collector) Collect() (string, app.HumanError) {
@@ -55,6 +55,13 @@ func (c *Collector) Collect() (string, app.HumanError) {
 		return "", app.NewError(ErrCollection, err, "Could not prepare archive directory.")
 	}
 
+	return c.CollectToDirectory(archiveDirectory)
+}
+
+// CollectToDirectory invokes the data collector.
+//
+// Takes and returns a path to a directory with collected data.
+func (c *Collector) CollectToDirectory(archiveDirectory string) (string, app.HumanError) {
 	var stdout, stderr bytes.Buffer
 	cmd := exec.Command(c.Exec, c.ExecArgs...)
 	cmd.Stdout = &stdout

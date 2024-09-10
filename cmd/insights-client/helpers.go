@@ -61,6 +61,11 @@ func writeInventoryGroup(group string) app.HumanError {
 
 // collectArchive instructs a collector to gather data into a directory.
 //
+// It starts a spinner if the terminal output allows it.
+//
+// Depending on CLI arguments, it writes the data into a given directory (if --output-dir is set)
+// or it writes it to a default directory location.
+//
 // Returns the path to the archive directory, collector's content type, and optional collection error.
 func collectArchive(arguments *Arguments) (string, string, app.HumanError) {
 	collector, err := collectors.GetCollector(arguments.Collector)
@@ -73,19 +78,39 @@ func collectArchive(arguments *Arguments) (string, string, app.HumanError) {
 		spin.Start()
 		defer spin.Stop()
 	}
+
+	if arguments.OutputDir != "" {
+		archiveDirectory, err := collector.CollectToDirectory(arguments.OutputDir)
+		return archiveDirectory, collector.ContentType, err
+	}
 	archiveDirectory, err := collector.Collect()
 	return archiveDirectory, collector.ContentType, err
 }
 
+// compressArchive calls methods that compress a directory into an archive.
+//
+// It starts a spinner if the terminal output allows it.
+//
+// Depending on CLI arguments, it creates an archive at given path (if --output-file is set)
+// or it writes it to a default archive location.
+//
+// Returns the patch to the archive file.
 func compressArchive(archiveDirectory string, arguments *Arguments) (string, app.HumanError) {
 	if isRichOutput(arguments) {
 		spin.Suffix = " compressing archive"
 		spin.Start()
 		defer spin.Stop()
 	}
+
+	if arguments.OutputFile != "" {
+		return internal.CompressDirectoryToPath(archiveDirectory, arguments.OutputFile)
+	}
 	return internal.CompressDirectory(archiveDirectory)
 }
 
+// uploadArchive makes a request to Ingress service.
+//
+// It starts a spinner if the terminal output allows it.
 func uploadArchive(archive ingress.Archive, arguments *Arguments) app.HumanError {
 	if isRichOutput(arguments) {
 		spin.Suffix = " uploading archive"
