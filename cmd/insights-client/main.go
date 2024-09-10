@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/urfave/cli/v3"
 
@@ -335,6 +337,9 @@ func parseCLI(cmd *cli.Command) (*Arguments, app.HumanError) {
 	arguments.CollectorOptions = cmd.StringSlice("collector-option")
 	arguments.OutputDir = cmd.String("output-dir")
 	arguments.OutputFile = cmd.String("output-file")
+	if cmd.IsSet("keep-archive") || cmd.IsSet("no-upload") {
+		arguments.OutputFile = filepath.Join(collectors.ArchiveDirectory, fmt.Sprintf("archive-%d.tar.xz", time.Now().Unix()))
+	}
 
 	// client
 	if cmd.IsSet("register") {
