@@ -85,7 +85,7 @@ func (s *Service) MakeRequest(
 	slog.Debug("request sent", slog.String("url", fullUrl), slog.Any("headers", req.Header))
 
 	if os.Getenv("HTTP_DEBUG") != "" && body.Len() > 0 {
-		slog.Debug("request data", slog.String("payload", body.String()))
+		slog.Debug("request data", slog.String("payload", stringifyData(body.Bytes())))
 	}
 
 	now := time.Now()
@@ -109,8 +109,36 @@ func (s *Service) MakeRequest(
 	}
 
 	if os.Getenv("HTTP_DEBUG") != "" && len(response) > 0 {
-		slog.Debug("response data", slog.String("payload", string(response)))
+		slog.Debug("response data", slog.String("payload", stringifyData(response)))
 	}
 
 	return &Response{Code: resp.StatusCode, Data: response}, nil
+}
+
+// stringifyData takes in a byte slice and converts it to string.
+//
+// Since the data may contain anything, bytes outside printable ASCII are
+// converted to simplified representation.
+func stringifyData(data []byte) string {
+	result := make([]byte, len(data))
+
+	unprintable := 0
+	for _, char := range data {
+		isPrintable := false
+		if char == '\n' || char == '\r' || (char >= ' ' && char < 127) {
+			isPrintable = true
+		}
+
+		if isPrintable && unprintable > 0 {
+			result = append(result, '.')
+		}
+		if isPrintable {
+			result = append(result, char)
+			unprintable = 0
+		} else {
+			unprintable++
+		}
+	}
+
+	return string(result)
 }
