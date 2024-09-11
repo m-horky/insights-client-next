@@ -416,8 +416,8 @@ func parseCLI(cmd *cli.Command) (*Arguments, app.HumanError) {
 		return arguments, nil
 	}
 
-	slog.Debug("no command supplied, assuming 'help'")
-	arguments.Help = true
+	slog.Debug("no command supplied, defaulting to data collection")
+	arguments.Collector = collectors.GetDefaultCollector().Name
 	return arguments, nil
 }
 
