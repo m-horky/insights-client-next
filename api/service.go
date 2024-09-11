@@ -37,11 +37,13 @@ func NewService(protocol, hostname string, port uint, path string) Service {
 	}
 }
 
+// Authenticate sets up the client with mTLS certificate keypair.
 func (s *Service) Authenticate(certificate, key string) {
 	s.clientCertificate = certificate
 	s.clientKey = key
 }
 
+// String formats the service into a URI.
 func (s *Service) String() string {
 	return fmt.Sprintf("%s://%s:%d/%s", s.protocol, s.hostname, s.port, s.path)
 }
