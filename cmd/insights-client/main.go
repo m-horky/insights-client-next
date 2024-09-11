@@ -119,13 +119,13 @@ var commands = []commandCategory{
 	{
 		Name: "DATA COLLECTION",
 		Commands: []cli.Flag{
-			&cli.StringFlag{Name: "collector", Usage: "run collector", Action: validateCollector},
-			&cli.BoolFlag{Name: "collector-list", Aliases: []string{"list-collectors"}, Usage: "list collectors"},
-			&cli.StringFlag{Name: "content-type", Usage: "content type for manual upload"},
-			&cli.StringFlag{Name: "payload", Usage: "archive path for manual upload"},
-			&cli.StringSliceFlag{Name: "collector-option", Aliases: []string{"opt"}, Usage: "collector option"},
+			&cli.StringFlag{Name: "collector", Aliases: []string{"m"}, Usage: "run collector and upload its archive", Action: validateCollector},
+			&cli.BoolFlag{Name: "collector-list", Usage: "list collectors"},
+			&cli.StringSliceFlag{Name: "collector-option", Aliases: []string{"opt"}, Usage: "set collector option"},
 			&cli.StringFlag{Name: "output-dir", Usage: "do not upload, collect into directory"},
 			&cli.StringFlag{Name: "output-file", Usage: "do not upload, collect into file"},
+			&cli.StringFlag{Name: "payload", Usage: "upload archive from this path"},
+			&cli.StringFlag{Name: "content-type", Usage: "upload archive with this content type"},
 		},
 	},
 	{
@@ -146,14 +146,14 @@ var commands = []commandCategory{
 			&cli.StringFlag{Name: "compressor", Usage: "ignored"},
 			&cli.BoolFlag{Name: "offline", Usage: "ignored"},
 			&cli.StringFlag{Name: "logging-file", Usage: "ignored"},
-			&cli.StringFlag{Name: "diagnosis", Usage: "alias for '--collector advisor --opt=diagnosis'"},
-			&cli.BoolFlag{Name: "check-results", Usage: "alias for '--collector advisor --opt=check-results'"},
-			&cli.BoolFlag{Name: "show-results", Usage: "alias for '--collector advisor --opt=show-results'"},
-			&cli.BoolFlag{Name: "list-specs", Usage: "alias for '--collector advisor --opt=list-specs'"},
-			&cli.BoolFlag{Name: "compliance", Usage: "alias for '--collector compliance'"},
+			&cli.StringFlag{Name: "diagnosis", Usage: "alias for '-m advisor --opt=diagnosis'"},
+			&cli.BoolFlag{Name: "check-results", Usage: "alias for '-m advisor --opt=check-results'"},
+			&cli.BoolFlag{Name: "show-results", Usage: "alias for '-m advisor --opt=show-results'"},
+			&cli.BoolFlag{Name: "list-specs", Usage: "alias for '-m advisor --opt=list-specs'"},
+			&cli.BoolFlag{Name: "compliance", Usage: "alias for '-m compliance'"},
 			&cli.BoolFlag{Name: "test-connection", Usage: "alias for '--status'"},
-			&cli.BoolFlag{Name: "no-upload", Usage: fmt.Sprintf("alias for '--output-file %sarchive-`date +%%s`'", collectors.ArchiveDirectory)},
-			&cli.BoolFlag{Name: "keep-archive", Usage: fmt.Sprintf("alias for '--output-file %sarchive-`date +%%s`'", collectors.ArchiveDirectory)},
+			&cli.BoolFlag{Name: "no-upload", Usage: "alias for '--output-file [PATH]'"},
+			&cli.BoolFlag{Name: "keep-archive", Usage: "alias for '--output-file [PATH]'"},
 			&cli.BoolFlag{Name: "support", Usage: "alias for 'sosreport'"},
 			&cli.BoolFlag{Name: "enable-schedule", Usage: "alias for '--register'"},
 			&cli.BoolFlag{Name: "disable-schedule", Usage: "alias for '--unregister'"},
@@ -163,14 +163,13 @@ var commands = []commandCategory{
 
 func buildHelpText() string {
 	// FIXME Can we make this not break in narrow terminals?
-
-	help := []string{`{{.Name}}, version {{.Version}}`}
+	help := []string{`Usage: {{.Name}} [COMMAND] [FLAGS]`}
 
 	maxFlagLength := 0
 	for _, cmdGrp := range commands {
 		for _, cmd := range cmdGrp.Commands {
-			if len(cmd.Names()[0]) > maxFlagLength {
-				maxFlagLength = len(cmd.Names()[0])
+			if len(buildHelpFlag(cmd)) > maxFlagLength {
+				maxFlagLength = len(buildHelpFlag(cmd))
 			}
 		}
 	}
@@ -182,15 +181,29 @@ func buildHelpText() string {
 		for _, cmd := range cmdGrp.Commands {
 			// left-justify flag names
 			help = append(help, fmt.Sprintf(
-				"  --%s%s  %s",
-				cmd.Names()[0],
-				strings.Repeat(" ", maxFlagLength-len(cmd.Names()[0])),
+				"  %s%s  %s",
+				buildHelpFlag(cmd),
+				strings.Repeat(" ", maxFlagLength-len(buildHelpFlag(cmd))),
 				cmd.(cli.DocGenerationFlag).GetUsage(),
 			))
 		}
 	}
 
 	return strings.Join(help, "\n") + "\n"
+}
+
+// buildHelpFlag constructs a string out of the flag and its aliases
+func buildHelpFlag(flag cli.Flag) string {
+	result := "--" + flag.Names()[0]
+
+	for _, alias := range flag.Names()[1:] {
+		if len(alias) == 1 {
+			result += ", -" + alias
+		} else {
+			result += ", --" + alias
+		}
+	}
+	return result
 }
 
 func buildCLI() *cli.Command {
