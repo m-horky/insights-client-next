@@ -307,7 +307,7 @@ func validateCLI(cmd *cli.Command) app.HumanError {
 		// top-level commands with upload modifiers
 		{"register", "unregister", "status", "checkin", "output-dir", "output-file"},
 		// 'group' can only be used alone or with 'register'
-		{"group", "unregister", "status", "checkin", "collector", "collector-list", "content-type", "payload"},
+		{"group", "unregister", "status", "checkin", "collector", "collector-list", "payload"},
 		// collection flags
 		{"output-dir", "output-file"},
 	} {
@@ -451,6 +451,9 @@ func runCLI(_ context.Context, cmd *cli.Command) error {
 	}
 	if arguments.Collector != "" {
 		return runCollector(arguments)
+	}
+	if arguments.Payload != "" && arguments.ContentType != "" {
+		return runUploadExistingArchive(arguments)
 	}
 
 	return app.NewError(nil, nil, "Not implemented.")

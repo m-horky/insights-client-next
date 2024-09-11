@@ -92,3 +92,25 @@ func runCollector(arguments *Arguments) app.HumanError {
 	fmt.Println("Archive uploaded.")
 	return nil
 }
+
+func runUploadExistingArchive(arguments *Arguments) app.HumanError {
+	if _, err := internal.GetCurrentInventoryHost(); err != nil {
+		return err
+	}
+
+	_, err := os.Stat(arguments.Payload)
+	if os.IsNotExist(err) {
+		return app.NewError(app.ErrInput, err, "The specified payload does not exist.")
+	}
+	if err != nil {
+		return app.NewError(app.ErrInput, err, "The specified payload cannot be used.")
+	}
+
+	archive := ingress.Archive{ContentType: arguments.ContentType, Path: arguments.Payload}
+	if err := uploadArchive(archive, arguments); err != nil {
+		return err
+	}
+
+	fmt.Println("Archive uploaded.")
+	return nil
+}
