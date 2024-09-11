@@ -71,7 +71,7 @@ func GetHost(insightsClientID string) (*Host, app.HumanError) {
 		slog.Debug("HBI returned more hosts", slog.Int("count", len(hosts.Results)))
 	}
 
-	slog.Debug("HBI host obtained")
+	slog.Debug("HBI host obtained", slog.String("inventory uuid", hosts.Results[0].InsightsInventoryID))
 	return &hosts.Results[0], nil
 }
 
