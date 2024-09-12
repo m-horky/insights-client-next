@@ -154,7 +154,7 @@ var commands = []commandCategory{
 			&cli.BoolFlag{Name: "test-connection", Usage: "alias for '--status'"},
 			&cli.BoolFlag{Name: "no-upload", Usage: "alias for '--output-file [PATH]'"},
 			&cli.BoolFlag{Name: "keep-archive", Usage: "alias for '--output-file [PATH]'"},
-			&cli.BoolFlag{Name: "support", Usage: "alias for 'sosreport'"},
+			&cli.BoolFlag{Name: "support", Usage: "alias for 'sos report'"},
 			&cli.BoolFlag{Name: "enable-schedule", Usage: "alias for '--register'"},
 			&cli.BoolFlag{Name: "disable-schedule", Usage: "alias for '--unregister'"},
 		},

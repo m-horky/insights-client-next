@@ -114,3 +114,8 @@ func runUnregister() app.HumanError {
 	fmt.Println("This host was unregistered.")
 	return nil
 }
+
+func runSupport() app.HumanError {
+	// sos report -o host -o release -o selinux -o subscription_manager -o insights -o rhc -o systemd -o python
+	return nil
+}
