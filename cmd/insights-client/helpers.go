@@ -79,6 +79,8 @@ func collectArchive(arguments *Arguments) (string, string, app.HumanError) {
 		defer spin.Stop()
 	}
 
+	collector.ExecArgs = append(collector.ExecArgs, arguments.CollectorOptions...)
+
 	if arguments.OutputDir != "" {
 		archiveDirectory, err := collector.CollectToDirectory(arguments.OutputDir)
 		return archiveDirectory, collector.ContentType, err

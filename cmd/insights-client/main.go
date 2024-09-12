@@ -347,11 +347,13 @@ func parseCLI(cmd *cli.Command) (*Arguments, app.HumanError) {
 	// flags
 	arguments.Format = internal.MustParseFormat(cmd.String("format"))
 	arguments.Debug = cmd.IsSet("debug")
-	arguments.CollectorOptions = cmd.StringSlice("collector-option")
 	arguments.OutputDir = cmd.String("output-dir")
 	arguments.OutputFile = cmd.String("output-file")
 	if cmd.IsSet("keep-archive") || cmd.IsSet("no-upload") {
 		arguments.OutputFile = filepath.Join(collectors.ArchiveDirectory, fmt.Sprintf("archive-%d.tar.xz", time.Now().Unix()))
+	}
+	for _, option := range cmd.StringSlice("collector-option") {
+		arguments.CollectorOptions = append(arguments.CollectorOptions, "--"+option)
 	}
 
 	// client

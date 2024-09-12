@@ -15,7 +15,7 @@ func GetAdvisorCollector() *Collector {
 		Version:     getCoreVersion(),
 		Env:         getCoreEnvironment(),
 		Exec:        "python3",
-		ExecArgs:    []string{"-m", "insights.client.phase.v2"},
+		ExecArgs:    []string{"-m", "insights.client.phase.v2", "advisor"},
 		ContentType: "application/vnd.redhat.advisor.collection+tgz",
 	}
 }
