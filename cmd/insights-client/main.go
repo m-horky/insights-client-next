@@ -359,6 +359,7 @@ func parseCLI(cmd *cli.Command) (*Arguments, app.HumanError) {
 	// client
 	if cmd.IsSet("register") {
 		arguments.Register = true
+		arguments.Collector = collectors.GetDefaultCollector().Name
 		arguments.DisplayName = cmd.String("display-name")
 		arguments.AnsibleHost = cmd.String("ansible-host")
 		arguments.Group = cmd.String("group")

@@ -43,7 +43,7 @@ func GetCollector(name string) (*Collector, app.HumanError) {
 			return collector, nil
 		}
 	}
-	return nil, app.NewError(ErrNoCollector, nil, "Collector not found.")
+	return nil, app.NewError(ErrNoCollector, nil, fmt.Sprintf("Collector not found: %s.", name))
 }
 
 // Collect invokes the data collector.

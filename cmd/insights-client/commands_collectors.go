@@ -64,7 +64,11 @@ func runCollector(arguments *Arguments) app.HumanError {
 		}
 	}
 
-	archiveDirectory, archiveContentType, err := collectArchive(arguments)
+	collector, err := collectors.GetCollector(arguments.Collector)
+	if err != nil {
+		return err
+	}
+	archiveDirectory, archiveContentType, err := collectArchive(collector, arguments)
 	if err != nil {
 		return err
 	}

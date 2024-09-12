@@ -67,12 +67,7 @@ func writeInventoryGroup(group string) app.HumanError {
 // or it writes it to a default directory location.
 //
 // Returns the path to the archive directory, collector's content type, and optional collection error.
-func collectArchive(arguments *Arguments) (string, string, app.HumanError) {
-	collector, err := collectors.GetCollector(arguments.Collector)
-	if err != nil {
-		return "", "", err
-	}
-
+func collectArchive(collector *collectors.Collector, arguments *Arguments) (string, string, app.HumanError) {
 	if isRichOutput(arguments) {
 		spin.Suffix = fmt.Sprintf(" waiting for '%s' to collect its data", collector.Name)
 		spin.Start()

@@ -49,12 +49,24 @@ func runRegister(arguments *Arguments) app.HumanError {
 		fmt.Println("Tags file updated.")
 	}
 
-	// TODO Handle --display-name
-	// TODO Handle --ansible-host
+	collector, err := collectors.GetCollector(arguments.Collector)
+	if err != nil {
+		return err
+	}
+
+	// during registration, the Advisor collection reads the values from config
+	// and saves them as archive metadata as `/display_name` and `/ansible_host`
+	// (see `insights/client/data_collector.py:DataCollector`).
+	if arguments.DisplayName != "" {
+		collector.ExecArgs = append(collector.ExecArgs, "--display-name="+arguments.DisplayName)
+	}
+	if arguments.AnsibleHost != "" {
+		collector.ExecArgs = append(collector.ExecArgs, "--ansible-host="+arguments.AnsibleHost)
+	}
 
 	// run the collection
 	arguments.Collector = collectors.GetDefaultCollector().Name
-	archiveDirectory, archiveContentType, err := collectArchive(arguments)
+	archiveDirectory, archiveContentType, err := collectArchive(collector, arguments)
 	if err != nil {
 		return err
 	}
