@@ -1,4 +1,4 @@
-# Contributing to Insights Ansible playbook verifier
+# Contributing to Insights Client
 
 ## Security
 
