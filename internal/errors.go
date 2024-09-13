@@ -1,4 +1,4 @@
-package app
+package internal
 
 import (
 	"errors"
@@ -12,7 +12,7 @@ var (
 	ErrNotRegistered = errors.New("host is not registered")
 )
 
-type HumanError interface {
+type IError interface {
 	Error() string
 	Is(error) bool
 	Human() string

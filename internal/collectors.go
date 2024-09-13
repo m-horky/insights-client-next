@@ -8,17 +8,15 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-
-	"github.com/m-horky/insights-client-next/app"
 )
 
-func CompressDirectory(directory string) (string, app.HumanError) {
+func CompressDirectory(directory string) (string, IError) {
 	archive := fmt.Sprintf("%s.tar.xz", directory)
 
 	return CompressDirectoryToPath(directory, archive)
 }
 
-func CompressDirectoryToPath(directory, archive string) (string, app.HumanError) {
+func CompressDirectoryToPath(directory, archive string) (string, IError) {
 	var stderr bytes.Buffer
 	cmd := exec.Command("tar", "--create", "--xz", "--sparse", "--file", archive, directory)
 	cmd.Stderr = &stderr
@@ -27,7 +25,7 @@ func CompressDirectoryToPath(directory, archive string) (string, app.HumanError)
 
 	err := cmd.Run()
 	if err != nil {
-		return "", app.NewError(
+		return "", NewError(
 			nil,
 			errors.Join(err, errors.New(stderr.String())),
 			"Could not compress archive.",
@@ -36,7 +34,7 @@ func CompressDirectoryToPath(directory, archive string) (string, app.HumanError)
 
 	stat, err := os.Stat(archive)
 	if err != nil {
-		return "", app.NewError(
+		return "", NewError(
 			nil,
 			err,
 			"Could not analyze generated archive.",

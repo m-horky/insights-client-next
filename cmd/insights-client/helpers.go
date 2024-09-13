@@ -10,7 +10,6 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/m-horky/insights-client-next/api/ingress"
-	"github.com/m-horky/insights-client-next/app"
 	"github.com/m-horky/insights-client-next/collectors"
 	"github.com/m-horky/insights-client-next/internal"
 )
@@ -36,25 +35,25 @@ func writeTimestampFile(path string) error {
 	return os.WriteFile(path, []byte(timestamp), 0775)
 }
 
-func writeInventoryGroup(group string) app.HumanError {
+func writeInventoryGroup(group string) internal.IError {
 	rawData, err := os.ReadFile("/etc/insights-client/tags.yaml")
 	if err != nil {
-		return app.NewError(app.ErrInput, err, "Could not open tags file.")
+		return internal.NewError(internal.ErrInput, err, "Could not open tags file.")
 	}
 
 	data := make(map[string]any)
 	if err = yaml.Unmarshal(rawData, &data); err != nil {
-		return app.NewError(nil, err, "Could not read tags file.")
+		return internal.NewError(nil, err, "Could not read tags file.")
 	}
 
 	data["group"] = group
 
 	newData, err := yaml.Marshal(data)
 	if err != nil {
-		return app.NewError(nil, err, "Could not update tags file.")
+		return internal.NewError(nil, err, "Could not update tags file.")
 	}
 	if err = os.WriteFile("/etc/insights-client/tags.yaml", newData, 0644); err != nil {
-		return app.NewError(nil, err, "Could not update tags file.")
+		return internal.NewError(nil, err, "Could not update tags file.")
 	}
 	return nil
 }
@@ -67,7 +66,7 @@ func writeInventoryGroup(group string) app.HumanError {
 // or it writes it to a default directory location.
 //
 // Returns the path to the archive directory, collector's content type, and optional collection error.
-func collectArchive(collector *collectors.Collector, arguments *Arguments) (string, string, app.HumanError) {
+func collectArchive(collector *collectors.Collector, arguments *Arguments) (string, string, internal.IError) {
 	if isRichOutput(arguments) {
 		spin.Suffix = fmt.Sprintf(" waiting for '%s' to collect its data", collector.Name)
 		spin.Start()
@@ -92,7 +91,7 @@ func collectArchive(collector *collectors.Collector, arguments *Arguments) (stri
 // or it writes it to a default archive location.
 //
 // Returns the patch to the archive file.
-func compressArchive(archiveDirectory string, arguments *Arguments) (string, app.HumanError) {
+func compressArchive(archiveDirectory string, arguments *Arguments) (string, internal.IError) {
 	if isRichOutput(arguments) {
 		spin.Suffix = " compressing archive"
 		spin.Start()
@@ -108,7 +107,7 @@ func compressArchive(archiveDirectory string, arguments *Arguments) (string, app
 // uploadArchive makes a request to Ingress service.
 //
 // It starts a spinner if the terminal output allows it.
-func uploadArchive(archive ingress.Archive, arguments *Arguments) app.HumanError {
+func uploadArchive(archive ingress.Archive, arguments *Arguments) internal.IError {
 	if isRichOutput(arguments) {
 		spin.Suffix = " uploading archive"
 		spin.Start()
@@ -121,7 +120,7 @@ func uploadArchive(archive ingress.Archive, arguments *Arguments) app.HumanError
 // unregisterLocally deletes local cache files.
 //
 // It does not call the Insights API.
-func unregisterLocally() app.HumanError {
+func unregisterLocally() internal.IError {
 	dotRegistered := "/etc/insights-client/.registered"
 	machineId := "/etc/insights-client/machine-id"
 	dotUnregistered := "/etc/insights-client/.unregistered"
@@ -146,6 +145,6 @@ func unregisterLocally() app.HumanError {
 		}
 		return nil
 	} else {
-		return app.NewError(nil, nil, "This host was not registered.")
+		return internal.NewError(nil, nil, "This host was not registered.")
 	}
 }

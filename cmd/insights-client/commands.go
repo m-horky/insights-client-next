@@ -14,7 +14,6 @@ import (
 	"github.com/m-horky/insights-client-next/api"
 	"github.com/m-horky/insights-client-next/api/ingress"
 	"github.com/m-horky/insights-client-next/api/inventory"
-	"github.com/m-horky/insights-client-next/app"
 	"github.com/m-horky/insights-client-next/collectors"
 	"github.com/m-horky/insights-client-next/internal"
 )
@@ -75,7 +74,7 @@ func main() {
 
 	slog.Debug("started", slog.Any("args", os.Args))
 	if err := cmd.Run(context.Background(), os.Args); err != nil {
-		if humanError, isHuman := err.(app.HumanError); isHuman {
+		if humanError, isHuman := err.(internal.IError); isHuman {
 			fmt.Println(humanError.Human())
 		} else {
 			fmt.Println("Error: " + err.Error())
@@ -261,7 +260,7 @@ type Arguments struct {
 // It shows notices for commands that are deprecated.
 //
 // It ensures flags that assume other flags are properly joined.
-func validateCLI(cmd *cli.Command) app.HumanError {
+func validateCLI(cmd *cli.Command) internal.IError {
 	// display deprecation notices
 	for oldCmd, newCmd := range map[string]string{
 		"diagnosis":        "--collector advisor --opt=diagnosis",
@@ -297,7 +296,7 @@ func validateCLI(cmd *cli.Command) app.HumanError {
 		}
 		for _, otherFlag := range flags[1:] {
 			if !cmd.IsSet(otherFlag) {
-				return app.NewError(app.ErrInput, nil, fmt.Sprintf(
+				return internal.NewError(internal.ErrInput, nil, fmt.Sprintf(
 					"Flag '--%s' also requires '--%s'.", flags[0], strings.Join(flags[1:], "', --'"),
 				))
 			}
@@ -324,7 +323,7 @@ func validateCLI(cmd *cli.Command) app.HumanError {
 			}
 		}
 		if len(usedFlags) > 1 {
-			return app.NewError(app.ErrInput, nil, fmt.Sprintf(
+			return internal.NewError(internal.ErrInput, nil, fmt.Sprintf(
 				"Some flags can't be used together: '--%s'.", strings.Join(usedFlags, "', '--")),
 			)
 		}
@@ -334,7 +333,7 @@ func validateCLI(cmd *cli.Command) app.HumanError {
 }
 
 // parseCLI converts the cli.Command object into a clean structure.
-func parseCLI(cmd *cli.Command) (*Arguments, app.HumanError) {
+func parseCLI(cmd *cli.Command) (*Arguments, internal.IError) {
 	arguments := &Arguments{}
 
 	// flags
@@ -433,7 +432,7 @@ func runCLI(_ context.Context, cmd *cli.Command) error {
 
 	// ask for elevated privileges
 	if os.Geteuid() != 0 {
-		return app.NewError(app.ErrPermissions, nil, "This command has to be run with superuser privileges.")
+		return internal.NewError(internal.ErrPermissions, nil, "This command has to be run with superuser privileges.")
 	}
 
 	// handle commands
@@ -465,5 +464,5 @@ func runCLI(_ context.Context, cmd *cli.Command) error {
 		return runUploadExistingArchive(arguments)
 	}
 
-	return app.NewError(nil, nil, "Not implemented.")
+	return internal.NewError(nil, nil, "Not implemented.")
 }

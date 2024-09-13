@@ -10,8 +10,6 @@ import (
 	"path"
 	"strings"
 	"time"
-
-	"github.com/m-horky/insights-client-next/app"
 )
 
 // Collector manages configuration required for data collection.
@@ -37,22 +35,22 @@ func GetDefaultCollector() *Collector {
 }
 
 // GetCollector filters available collectors by name.
-func GetCollector(name string) (*Collector, app.HumanError) {
+func GetCollector(name string) (*Collector, IError) {
 	for _, collector := range GetCollectors() {
 		if collector.Name == name {
 			return collector, nil
 		}
 	}
-	return nil, app.NewError(ErrNoCollector, nil, fmt.Sprintf("Collector not found: %s.", name))
+	return nil, NewError(ErrNoCollector, nil, fmt.Sprintf("Collector not found: %s.", name))
 }
 
 // Collect invokes the data collector.
 //
 // Returns path to a directory with collected data.
-func (c *Collector) Collect() (string, app.HumanError) {
+func (c *Collector) Collect() (string, IError) {
 	archiveDirectory := path.Join(ArchiveDirectory, fmt.Sprintf("archive-%d", time.Now().Unix()))
 	if err := os.Mkdir(archiveDirectory, 0o750); err != nil {
-		return "", app.NewError(ErrCollection, err, "Could not prepare archive directory.")
+		return "", NewError(ErrCollection, err, "Could not prepare archive directory.")
 	}
 
 	return c.CollectToDirectory(archiveDirectory)
@@ -61,7 +59,7 @@ func (c *Collector) Collect() (string, app.HumanError) {
 // CollectToDirectory invokes the data collector.
 //
 // Takes and returns a path to a directory with collected data.
-func (c *Collector) CollectToDirectory(archiveDirectory string) (string, app.HumanError) {
+func (c *Collector) CollectToDirectory(archiveDirectory string) (string, IError) {
 	var stdout, stderr bytes.Buffer
 	cmd := exec.Command(c.Exec, c.ExecArgs...)
 	cmd.Stdout = &stdout
@@ -79,7 +77,7 @@ func (c *Collector) CollectToDirectory(archiveDirectory string) (string, app.Hum
 
 	err := cmd.Run()
 	if err != nil {
-		return "", app.NewError(
+		return "", NewError(
 			ErrCollection,
 			errors.Join(err, errors.New(stderr.String())),
 			"Could not run collector.",

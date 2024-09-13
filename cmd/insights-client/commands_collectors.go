@@ -9,12 +9,11 @@ import (
 	_ "github.com/briandowns/spinner"
 
 	"github.com/m-horky/insights-client-next/api/ingress"
-	"github.com/m-horky/insights-client-next/app"
 	"github.com/m-horky/insights-client-next/collectors"
 	"github.com/m-horky/insights-client-next/internal"
 )
 
-func runCollectorList() app.HumanError {
+func runCollectorList() internal.IError {
 	fmt.Println("Available collectors:")
 	for _, collector := range collectors.GetCollectors() {
 		fmt.Printf("* %s %s\n", collector.Name, collector.Version)
@@ -22,7 +21,7 @@ func runCollectorList() app.HumanError {
 	return nil
 }
 
-func runCollector(arguments *Arguments) app.HumanError {
+func runCollector(arguments *Arguments) internal.IError {
 	// When doing local collection, we don't need to check for registration
 	if arguments.OutputFile == "" && arguments.OutputDir == "" {
 		if _, err := internal.GetCurrentInventoryHost(); err != nil {
@@ -36,31 +35,31 @@ func runCollector(arguments *Arguments) app.HumanError {
 	if arguments.OutputDir != "" {
 		_, err := os.Stat(arguments.OutputDir)
 		if os.IsNotExist(err) {
-			return app.NewError(app.ErrInput, err, "The specified output directory does not exist.")
+			return internal.NewError(internal.ErrInput, err, "The specified output directory does not exist.")
 		}
 		if err != nil {
-			return app.NewError(app.ErrInput, err, "The specified output directory cannot be used.")
+			return internal.NewError(internal.ErrInput, err, "The specified output directory cannot be used.")
 		}
 		dirContent, err := os.ReadDir(arguments.OutputDir)
 		if err != nil {
-			return app.NewError(app.ErrInput, err, "The specified output directory cannot be used.")
+			return internal.NewError(internal.ErrInput, err, "The specified output directory cannot be used.")
 		}
 		if len(dirContent) > 0 {
-			return app.NewError(app.ErrInput, err, "The specified output directory cannot be used, because it is not empty.")
+			return internal.NewError(internal.ErrInput, err, "The specified output directory cannot be used, because it is not empty.")
 		}
 	}
 	// validate that the --output-file does not exist and its parent does exist
 	if arguments.OutputFile != "" {
 		_, err := os.Stat(arguments.OutputFile)
 		if !os.IsNotExist(err) {
-			return app.NewError(app.ErrInput, err, "The specified output file cannot be used.")
+			return internal.NewError(internal.ErrInput, err, "The specified output file cannot be used.")
 		}
 		_, err = os.Stat(path.Dir(arguments.OutputFile))
 		if os.IsNotExist(err) {
-			return app.NewError(app.ErrInput, err, "The specified output file cannot be used, because its parent directory does not exist.")
+			return internal.NewError(internal.ErrInput, err, "The specified output file cannot be used, because its parent directory does not exist.")
 		}
 		if err != nil {
-			return app.NewError(app.ErrInput, err, "The specified output file cannot be used.")
+			return internal.NewError(internal.ErrInput, err, "The specified output file cannot be used.")
 		}
 	}
 
@@ -97,17 +96,17 @@ func runCollector(arguments *Arguments) app.HumanError {
 	return nil
 }
 
-func runUploadExistingArchive(arguments *Arguments) app.HumanError {
+func runUploadExistingArchive(arguments *Arguments) internal.IError {
 	if _, err := internal.GetCurrentInventoryHost(); err != nil {
 		return err
 	}
 
 	_, err := os.Stat(arguments.Payload)
 	if os.IsNotExist(err) {
-		return app.NewError(app.ErrInput, err, "The specified payload does not exist.")
+		return internal.NewError(internal.ErrInput, err, "The specified payload does not exist.")
 	}
 	if err != nil {
-		return app.NewError(app.ErrInput, err, "The specified payload cannot be used.")
+		return internal.NewError(internal.ErrInput, err, "The specified payload cannot be used.")
 	}
 
 	archive := ingress.Archive{ContentType: arguments.ContentType, Path: arguments.Payload}

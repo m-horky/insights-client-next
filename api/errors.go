@@ -13,6 +13,12 @@ var (
 	ErrUnparseable        = errors.New("data could not be parsed")
 )
 
+type IError interface {
+	Error() string
+	Is(error) bool
+	Human() string
+}
+
 type Error struct {
 	typ         error
 	original    error
@@ -29,7 +35,7 @@ type Error struct {
 // `response` is the raw `http.Response` object.
 //
 // `human` is human-readable, translatable error message displayed to the user.
-func NewError(typ, original error, response *Response, human string) *Error {
+func NewError(typ, original error, response *Response, human string) IError {
 	return &Error{
 		typ:         typ,
 		original:    original,

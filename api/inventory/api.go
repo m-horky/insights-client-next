@@ -8,7 +8,6 @@ import (
 	"net/url"
 
 	"github.com/m-horky/insights-client-next/api"
-	"github.com/m-horky/insights-client-next/app"
 )
 
 var service api.Service
@@ -22,7 +21,7 @@ func Init(s *api.Service) {
 // GetHost returns full host record from Inventory.
 //
 // Error is returned if there is no host, the first host is returned if there are multiple hosts present.
-func GetHost(insightsClientID string) (*Host, app.HumanError) {
+func GetHost(insightsClientID string) (*Host, api.IError) {
 	slog.Debug("querying HBI for a host")
 
 	params := url.Values{}
@@ -77,7 +76,7 @@ func GetHost(insightsClientID string) (*Host, app.HumanError) {
 }
 
 // DeleteHost deletes the host record from Inventory.
-func DeleteHost(insightsInventoryID string) app.HumanError {
+func DeleteHost(insightsInventoryID string) api.IError {
 	slog.Debug("deleting HBI host")
 
 	response, err := service.MakeRequest("DELETE", fmt.Sprintf("hosts/%s", insightsInventoryID), url.Values{}, make(map[string][]string), nil)
@@ -104,7 +103,7 @@ func DeleteHost(insightsInventoryID string) app.HumanError {
 }
 
 // UpdateDisplayName changes the name of the host displayed in Inventory.
-func UpdateDisplayName(insightsInventoryID, displayName string) app.HumanError {
+func UpdateDisplayName(insightsInventoryID, displayName string) api.IError {
 	slog.Debug("updating HBI host's display name", slog.String("name", displayName))
 
 	endpoint := fmt.Sprintf("hosts/%s", insightsInventoryID)
@@ -150,7 +149,7 @@ func UpdateDisplayName(insightsInventoryID, displayName string) app.HumanError {
 }
 
 // UpdateAnsibleHostname changes the name of the host displayed in Inventory.
-func UpdateAnsibleHostname(insightsInventoryID, ansibleHostname string) app.HumanError {
+func UpdateAnsibleHostname(insightsInventoryID, ansibleHostname string) api.IError {
 	slog.Debug("updating HBI host's display name", slog.String("name", ansibleHostname))
 
 	endpoint := fmt.Sprintf("hosts/%s", insightsInventoryID)

@@ -13,7 +13,6 @@ import (
 	"path/filepath"
 
 	"github.com/m-horky/insights-client-next/api"
-	"github.com/m-horky/insights-client-next/app"
 )
 
 var service api.Service
@@ -25,7 +24,7 @@ func Init(s *api.Service) {
 }
 
 // UploadArchive loads an archive from filesystem and uploads it to Ingress.
-func UploadArchive(archive Archive) (*Uploaded, app.HumanError) {
+func UploadArchive(archive Archive) (*Uploaded, api.IError) {
 	slog.Debug(
 		"uploading archive",
 		slog.String("path", archive.Path),

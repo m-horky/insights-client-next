@@ -7,12 +7,11 @@ import (
 
 	"github.com/m-horky/insights-client-next/api/ingress"
 	"github.com/m-horky/insights-client-next/api/inventory"
-	"github.com/m-horky/insights-client-next/app"
 	"github.com/m-horky/insights-client-next/collectors"
 	"github.com/m-horky/insights-client-next/internal"
 )
 
-func runStatus() app.HumanError {
+func runStatus() internal.IError {
 	host, err := internal.GetCurrentInventoryHost()
 	if err != nil {
 		return err
@@ -25,12 +24,13 @@ func runStatus() app.HumanError {
 	return nil
 }
 
-func runRegister(arguments *Arguments) app.HumanError {
+func runRegister(arguments *Arguments) internal.IError {
 	host, _ := internal.GetCurrentInventoryHost()
 	if host != nil {
-		return app.NewError(app.ErrRegistered, nil, "This host is already registered.")
+		return internal.NewError(internal.ErrRegistered, nil, "This host is already registered.")
 	}
 
+	// TODO Read the location from the rhsm configuration file instead
 	rhsm, err := internal.ReadRHSMIdentity("/etc/pki/consumer/cert.pem")
 	if err != nil {
 		return err
@@ -104,7 +104,7 @@ func runRegister(arguments *Arguments) app.HumanError {
 // Unregister the host.
 //
 // Deletes the host from Inventory and deletes local files.
-func runUnregister() app.HumanError {
+func runUnregister() internal.IError {
 	host, err := internal.GetCurrentInventoryHost()
 	if err != nil {
 		return err

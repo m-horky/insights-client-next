@@ -2,8 +2,6 @@ package internal
 
 import (
 	"strings"
-
-	"github.com/m-horky/insights-client-next/app"
 )
 
 type Format uint8
@@ -16,14 +14,14 @@ const (
 // ParseFormat converts a string into a Format.
 //
 // If parsing fails, returns `Human` and an error.
-func ParseFormat(format string) (Format, app.HumanError) {
+func ParseFormat(format string) (Format, IError) {
 	switch strings.ToLower(format) {
 	case "human":
 		return Human, nil
 	case "json":
 		return JSON, nil
 	default:
-		return Human, app.NewError(nil, nil, "Unknown format.")
+		return Human, NewError(nil, nil, "Unknown format.")
 	}
 }
 

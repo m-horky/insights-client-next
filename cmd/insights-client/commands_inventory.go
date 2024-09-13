@@ -6,11 +6,10 @@ import (
 	"os"
 
 	"github.com/m-horky/insights-client-next/api/inventory"
-	"github.com/m-horky/insights-client-next/app"
 	"github.com/m-horky/insights-client-next/internal"
 )
 
-func runDisplayName(arguments *Arguments) app.HumanError {
+func runDisplayName(arguments *Arguments) internal.IError {
 	host, err := internal.GetCurrentInventoryHost()
 	if err != nil {
 		return err
@@ -21,7 +20,7 @@ func runDisplayName(arguments *Arguments) app.HumanError {
 		hostname, osErr := os.Hostname()
 		if osErr != nil {
 			slog.Error("could not determine hostname", slog.String("error", osErr.Error()))
-			return app.NewError(nil, osErr, "Could not reset display name.")
+			return internal.NewError(nil, osErr, "Could not reset display name.")
 		}
 		displayName = hostname
 	}
@@ -38,7 +37,7 @@ func runDisplayName(arguments *Arguments) app.HumanError {
 	return nil
 }
 
-func runAnsibleHostname(arguments *Arguments) app.HumanError {
+func runAnsibleHostname(arguments *Arguments) internal.IError {
 	host, err := internal.GetCurrentInventoryHost()
 	if err != nil {
 		fmt.Println("Error: Could not get current Inventory host.")
@@ -50,7 +49,7 @@ func runAnsibleHostname(arguments *Arguments) app.HumanError {
 		hostname, osErr := os.Hostname()
 		if osErr != nil {
 			slog.Error("could not determine hostname", slog.String("error", osErr.Error()))
-			return app.NewError(nil, osErr, "Could not reset ansible hostname.")
+			return internal.NewError(nil, osErr, "Could not reset ansible hostname.")
 		}
 		ansibleHostname = hostname
 	}
@@ -67,7 +66,7 @@ func runAnsibleHostname(arguments *Arguments) app.HumanError {
 	return nil
 }
 
-func runGroup(arguments *Arguments) app.HumanError {
+func runGroup(arguments *Arguments) internal.IError {
 	slog.Debug("Setting Inventory group", slog.String("value", arguments.Group))
 
 	if err := writeInventoryGroup(arguments.Group); err != nil {

@@ -9,8 +9,6 @@ import (
 	"net/url"
 	"os"
 	"time"
-
-	"github.com/m-horky/insights-client-next/app"
 )
 
 type ServiceURL struct {
@@ -61,7 +59,7 @@ func (s *Service) MakeRequest(
 	parameters url.Values,
 	headers map[string][]string,
 	body *bytes.Buffer,
-) (*Response, app.HumanError) {
+) (*Response, IError) {
 	fullUrl := fmt.Sprintf("%s/%s?%s", s, endpoint, parameters.Encode())
 
 	if body == nil {
@@ -70,7 +68,7 @@ func (s *Service) MakeRequest(
 	req, err := http.NewRequest(method, fullUrl, body)
 	if err != nil {
 		slog.Error("could not construct request", slog.String("error", err.Error()))
-		return nil, app.NewError(ErrRequest, err, "Could not construct API request.")
+		return nil, NewError(ErrRequest, err, nil, "Could not construct API request.")
 	}
 
 	for key, value := range headers {
@@ -84,7 +82,7 @@ func (s *Service) MakeRequest(
 	client, err := NewAuthenticatedClient(s.ClientCertificate, s.ClientKey)
 	if err != nil {
 		slog.Error("could not create client", slog.String("error", err.Error()))
-		return nil, app.NewError(ErrRequest, err, "Could not create API client.")
+		return nil, NewError(ErrRequest, err, nil, "Could not create API client.")
 	}
 
 	slog.Debug("request sent", slog.String("URL", fullUrl), slog.Any("headers", req.Header))
@@ -98,7 +96,7 @@ func (s *Service) MakeRequest(
 	delta := time.Since(now)
 	if err != nil {
 		slog.Error("could not make request", slog.String("error", err.Error()))
-		return nil, app.NewError(ErrRequest, err, "Could not make API request.")
+		return nil, NewError(ErrRequest, err, nil, "Could not make API request.")
 	}
 	defer resp.Body.Close()
 	slog.Debug(
@@ -110,7 +108,7 @@ func (s *Service) MakeRequest(
 	response, err := io.ReadAll(resp.Body)
 	if err != nil {
 		slog.Error("could not read response body", slog.String("error", err.Error()))
-		return nil, app.NewError(ErrRequest, err, "Could not read API response.")
+		return nil, NewError(ErrRequest, err, nil, "Could not read API response.")
 	}
 
 	if os.Getenv("HTTP_DEBUG") != "" && len(response) > 0 {
