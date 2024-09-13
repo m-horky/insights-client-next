@@ -31,7 +31,7 @@ func runRegister(arguments *Arguments) app.HumanError {
 		return app.NewError(app.ErrRegistered, nil, "This host is already registered.")
 	}
 
-	rhsm, err := app.ReadRHSMIdentity("/etc/pki/consumer/cert.pem")
+	rhsm, err := internal.ReadRHSMIdentity("/etc/pki/consumer/cert.pem")
 	if err != nil {
 		return err
 	}
