@@ -64,16 +64,9 @@ func initCLI() {
 
 func initServices() {
 	config := internal.GetConfiguration()
-	{
-		s := api.NewService(config.APIProtocol, config.APIHost, config.APIPort, "api/inventory/v1")
-		s.Authenticate(config.IdentityCertificate, config.IdentityKey)
-		inventory.Init(&s)
-	}
-	{
-		s := api.NewService(config.APIProtocol, config.APIHost, config.APIPort, "api/ingress/v1")
-		s.Authenticate(config.IdentityCertificate, config.IdentityKey)
-		ingress.Init(&s)
-	}
+	url := api.NewServiceURL(config.APIProtocol, config.APIHost, config.APIPort)
+	inventory.Init(api.NewServiceWithAuthentication(url, config.IdentityCertificate, config.IdentityKey))
+	ingress.Init(api.NewServiceWithAuthentication(url, config.IdentityCertificate, config.IdentityKey))
 }
 
 func main() {

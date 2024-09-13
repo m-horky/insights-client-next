@@ -16,6 +16,7 @@ var service api.Service
 // Init has to be called to set up the API configuration for the service.
 func Init(s *api.Service) {
 	service = *s
+	service.Path = "api/inventory/v1"
 }
 
 // GetHost returns full host record from Inventory.

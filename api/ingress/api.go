@@ -21,6 +21,7 @@ var service api.Service
 // Init has to be called to set up the API configuration for the service.
 func Init(s *api.Service) {
 	service = *s
+	service.Path = "api/ingress/v1"
 }
 
 // UploadArchive loads an archive from filesystem and uploads it to Ingress.

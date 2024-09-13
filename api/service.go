@@ -13,39 +13,42 @@ import (
 	"github.com/m-horky/insights-client-next/app"
 )
 
+type ServiceURL struct {
+	protocol string
+	hostname string
+	port     uint
+}
+
+// NewServiceURL creates a definition for service API.
+func NewServiceURL(protocol, hostname string, port uint) *ServiceURL {
+	return &ServiceURL{
+		protocol: protocol,
+		hostname: hostname,
+		port:     port,
+	}
+}
+
 // Service is a representation of an API service.
 //
 // To create an instance, use NewService.
 type Service struct {
-	protocol          string
-	hostname          string
-	port              uint
-	path              string
-	clientCertificate string
-	clientKey         string
+	URL               *ServiceURL
+	Path              string
+	ClientCertificate string
+	ClientKey         string
 }
 
-// NewService creates a definition for service API.
-//
-// `path` is in a form of `api/NAME/v1`, without leading or trailing slashes.
-func NewService(protocol, hostname string, port uint, path string) Service {
-	return Service{
-		protocol: protocol,
-		hostname: hostname,
-		port:     port,
-		path:     path,
-	}
+func NewService(url *ServiceURL) *Service {
+	return &Service{URL: url}
 }
 
-// Authenticate sets up the client with mTLS certificate keypair.
-func (s *Service) Authenticate(certificate, key string) {
-	s.clientCertificate = certificate
-	s.clientKey = key
+func NewServiceWithAuthentication(url *ServiceURL, certificate, key string) *Service {
+	return &Service{URL: url, ClientCertificate: certificate, ClientKey: key}
 }
 
 // String formats the service into a URI.
 func (s *Service) String() string {
-	return fmt.Sprintf("%s://%s:%d/%s", s.protocol, s.hostname, s.port, s.path)
+	return fmt.Sprintf("%s://%s:%d/%s", s.URL.protocol, s.URL.hostname, s.URL.port, s.Path)
 }
 
 // MakeRequest sends a request to a relevant service.
@@ -78,13 +81,13 @@ func (s *Service) MakeRequest(
 		req.Header.Set("Accept", "application/json")
 	}
 
-	client, err := NewAuthenticatedClient(s.clientCertificate, s.clientKey)
+	client, err := NewAuthenticatedClient(s.ClientCertificate, s.ClientKey)
 	if err != nil {
 		slog.Error("could not create client", slog.String("error", err.Error()))
 		return nil, app.NewError(ErrRequest, err, "Could not create API client.")
 	}
 
-	slog.Debug("request sent", slog.String("url", fullUrl), slog.Any("headers", req.Header))
+	slog.Debug("request sent", slog.String("URL", fullUrl), slog.Any("headers", req.Header))
 
 	if os.Getenv("HTTP_DEBUG") != "" && body.Len() > 0 {
 		slog.Debug("request data", slog.String("payload", stringifyData(body.Bytes())))
