@@ -21,7 +21,7 @@ func Init(s *api.Service) {
 // GetHost returns full host record from Inventory.
 //
 // Error is returned if there is no host, the first host is returned if there are multiple hosts present.
-func GetHost(insightsClientID string) (*Host, api.IError) {
+func GetHost(insightsClientID string) (*Host, *api.Error) {
 	slog.Debug("querying HBI for a host")
 
 	params := url.Values{}

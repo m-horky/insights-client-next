@@ -63,7 +63,7 @@ func (s *Service) MakeRequest(
 	parameters url.Values,
 	headers map[string][]string,
 	body *bytes.Buffer,
-) (*Response, IError) {
+) (*Response, *Error) {
 	fullUrl := fmt.Sprintf("%s/%s?%s", s, endpoint, parameters.Encode())
 
 	if body == nil {

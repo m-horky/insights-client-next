@@ -35,7 +35,7 @@ type Error struct {
 // `response` is the raw `http.Response` object.
 //
 // `human` is human-readable, translatable error message displayed to the user.
-func NewError(typ, original error, response *Response, human string) IError {
+func NewError(typ, original error, response *Response, human string) *Error {
 	return &Error{
 		typ:         typ,
 		original:    original,

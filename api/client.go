@@ -10,7 +10,7 @@ import (
 )
 
 // NewAuthenticatedClient creates a client that uses mTLS authentication.
-func NewAuthenticatedClient(certPath, keyPath string, proxy *url.URL) (*http.Client, IError) {
+func NewAuthenticatedClient(certPath, keyPath string, proxy *url.URL) (*http.Client, *Error) {
 	cert, err := tls.LoadX509KeyPair(certPath, keyPath)
 	if err != nil {
 		slog.Error("could not load identity certificate", slog.String("error", err.Error()))
