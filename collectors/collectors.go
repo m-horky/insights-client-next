@@ -64,7 +64,8 @@ func (c *Collector) CollectToDirectory(archiveDirectory string) (string, IError)
 	cmd := exec.Command(c.Exec, c.ExecArgs...)
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
-	cmd.Env = c.Env
+	cmd.Env = []string{"LC_ALL=C.UTF-8"}
+	cmd.Env = append(cmd.Env, c.Env...)
 	cmd.Env = append(cmd.Env, fmt.Sprintf("ARCHIVE=%s", archiveDirectory))
 
 	slog.Debug(
