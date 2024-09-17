@@ -30,12 +30,7 @@ func GetHost(insightsClientID string) (*Host, api.IError) {
 	response, err := service.MakeRequest("GET", "hosts", params, map[string][]string{}, nil)
 	if err != nil {
 		slog.Error("could not contact HBI", slog.String("error", err.Error()))
-		return nil, api.NewError(
-			api.ErrServiceUnreachable,
-			err,
-			nil,
-			"Host inventory could not be contacted.",
-		)
+		return nil, err
 	}
 
 	if response.Code != 200 {

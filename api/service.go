@@ -11,42 +11,46 @@ import (
 	"time"
 )
 
-type ServiceURL struct {
-	protocol string
-	hostname string
-	port     uint
-}
-
-// NewServiceURL creates a definition for service API.
-func NewServiceURL(protocol, hostname string, port uint) *ServiceURL {
-	return &ServiceURL{
-		protocol: protocol,
-		hostname: hostname,
-		port:     port,
-	}
-}
-
 // Service is a representation of an API service.
 //
 // To create an instance, use NewService.
 type Service struct {
-	URL               *ServiceURL
+	URL               *url.URL
 	Path              string
 	ClientCertificate string
 	ClientKey         string
+	Proxy             *url.URL
 }
 
-func NewService(url *ServiceURL) *Service {
-	return &Service{URL: url}
+func NewService(address *url.URL) *Service {
+	return &Service{URL: address}
 }
 
-func NewServiceWithAuthentication(url *ServiceURL, certificate, key string) *Service {
-	return &Service{URL: url, ClientCertificate: certificate, ClientKey: key}
+// WithAuthentication configures the service to use mTLS.
+func (s *Service) WithAuthentication(certificate, key string) *Service {
+	return &Service{s.URL, s.Path, certificate, key, s.Proxy}
+}
+
+// WithProxy configures the service to use a HTTP(S) proxy.
+func (s *Service) WithProxy(address string) *Service {
+	// TODO Should this make in-place change and only return an error instead?
+
+	result := &Service{s.URL, s.Path, s.ClientCertificate, s.ClientKey, s.Proxy}
+	proxyURL, err := url.Parse(address)
+	if address == "" {
+		return result
+	}
+	if err != nil {
+		slog.Error("couldn't parse proxy URL", slog.String("error", err.Error()))
+		return result
+	}
+	result.Proxy = proxyURL
+	return result
 }
 
 // String formats the service into a URI.
 func (s *Service) String() string {
-	return fmt.Sprintf("%s://%s:%d/%s", s.URL.protocol, s.URL.hostname, s.URL.port, s.Path)
+	return fmt.Sprintf("%s://%s/%s", s.URL.Scheme, s.URL.Host, s.Path)
 }
 
 // MakeRequest sends a request to a relevant service.
@@ -79,13 +83,19 @@ func (s *Service) MakeRequest(
 		req.Header.Set("Accept", "application/json")
 	}
 
-	client, err := NewAuthenticatedClient(s.ClientCertificate, s.ClientKey)
+	client, err := NewAuthenticatedClient(s.ClientCertificate, s.ClientKey, s.Proxy)
 	if err != nil {
 		slog.Error("could not create client", slog.String("error", err.Error()))
 		return nil, NewError(ErrRequest, err, nil, "Could not create API client.")
 	}
 
-	slog.Debug("request sent", slog.String("URL", fullUrl), slog.Any("headers", req.Header))
+	{
+		attrs := []any{slog.String("URL", fullUrl), slog.Any("headers", req.Header)}
+		if s.Proxy != nil {
+			attrs = append(attrs, slog.String("proxy", s.Proxy.String()))
+		}
+		slog.Debug("request sent", attrs...)
+	}
 
 	if os.Getenv("HTTP_DEBUG") != "" && body.Len() > 0 {
 		slog.Debug("request data", slog.String("payload", stringifyData(body.Bytes())))

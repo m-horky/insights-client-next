@@ -5,11 +5,12 @@ import (
 	"crypto/x509"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 )
 
 // NewAuthenticatedClient creates a client that uses mTLS authentication.
-func NewAuthenticatedClient(certPath, keyPath string) (*http.Client, IError) {
+func NewAuthenticatedClient(certPath, keyPath string, proxy *url.URL) (*http.Client, IError) {
 	cert, err := tls.LoadX509KeyPair(certPath, keyPath)
 	if err != nil {
 		slog.Error("could not load identity certificate", slog.String("error", err.Error()))
@@ -30,6 +31,10 @@ func NewAuthenticatedClient(certPath, keyPath string) (*http.Client, IError) {
 
 	pool.AppendCertsFromPEM(caCert)
 	tlsConfig := &tls.Config{RootCAs: pool, Certificates: []tls.Certificate{cert}}
+
 	transport := &http.Transport{TLSClientConfig: tlsConfig}
+	if proxy != nil {
+		transport.Proxy = http.ProxyURL(proxy)
+	}
 	return &http.Client{Transport: transport}, nil
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -63,9 +64,12 @@ func initCLI() {
 
 func initServices() {
 	config := internal.GetConfiguration()
-	url := api.NewServiceURL(config.APIProtocol, config.APIHost, config.APIPort)
-	inventory.Init(api.NewServiceWithAuthentication(url, config.IdentityCertificate, config.IdentityKey))
-	ingress.Init(api.NewServiceWithAuthentication(url, config.IdentityCertificate, config.IdentityKey))
+	// FIXME This won't work for IPv6 address
+	address := &url.URL{Scheme: config.APIProtocol, Host: fmt.Sprintf("%s:%d", config.APIHost, config.APIPort)}
+	// TODO Support the configuration file
+	template := api.NewService(address).WithAuthentication(config.IdentityCertificate, config.IdentityKey).WithProxy(os.Getenv("HTTP_PROXY"))
+	inventory.Init(template)
+	ingress.Init(template)
 }
 
 func main() {
