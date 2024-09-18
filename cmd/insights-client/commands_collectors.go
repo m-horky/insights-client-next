@@ -9,19 +9,24 @@ import (
 	_ "github.com/briandowns/spinner"
 
 	"github.com/m-horky/insights-client-next/api/ingress"
-	"github.com/m-horky/insights-client-next/collectors"
 	"github.com/m-horky/insights-client-next/internal"
+	"github.com/m-horky/insights-client-next/modules"
 )
 
-func runCollectorList() internal.IError {
-	fmt.Println("Available collectors:")
-	for _, collector := range collectors.GetCollectors() {
-		fmt.Printf("* %s %s\n", collector.Name, collector.Version)
+func runModuleList() internal.IError {
+	fmt.Println("Available modules:")
+	for _, module := range modules.GetModules() {
+		fmt.Printf("* %s %s\n", module.Name, module.Version)
 	}
 	return nil
 }
 
-func runCollector(arguments *Arguments) internal.IError {
+func runModule(arguments *Arguments) internal.IError {
+	fmt.Println(arguments.ModuleOptions)
+	return nil
+}
+
+func runModuleCollect(arguments *Arguments) internal.IError {
 	// When doing local collection, we don't need to check for registration
 	if arguments.OutputFile == "" && arguments.OutputDir == "" {
 		if _, err := internal.GetCurrentInventoryHost(); err != nil {
@@ -63,7 +68,7 @@ func runCollector(arguments *Arguments) internal.IError {
 		}
 	}
 
-	collector, err := collectors.GetCollector(arguments.Collector)
+	collector, err := modules.GetModule(arguments.Module)
 	if err != nil {
 		return err
 	}

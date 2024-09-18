@@ -1,4 +1,4 @@
-package collectors
+package modules
 
 import (
 	"bytes"
@@ -9,8 +9,8 @@ import (
 	"strings"
 )
 
-func GetAdvisorCollector() *Collector {
-	return &Collector{
+func GetAdvisorModule() *Module {
+	return &Module{
 		Name:        "advisor",
 		Version:     getCoreVersion(),
 		Env:         getCoreEnvironment(),

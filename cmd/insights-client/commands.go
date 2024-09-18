@@ -15,8 +15,8 @@ import (
 	"github.com/m-horky/insights-client-next/api"
 	"github.com/m-horky/insights-client-next/api/ingress"
 	"github.com/m-horky/insights-client-next/api/inventory"
-	"github.com/m-horky/insights-client-next/collectors"
 	"github.com/m-horky/insights-client-next/internal"
+	"github.com/m-horky/insights-client-next/modules"
 )
 
 func init() {
@@ -56,8 +56,8 @@ func initCLI() {
 	cli.VersionFlag = &cli.BoolFlag{Name: "version"}
 	cli.VersionPrinter = func(cmd *cli.Command) {
 		fmt.Println("insights-client", internal.Version)
-		for _, collector := range collectors.GetCollectors() {
-			fmt.Printf("* %s %s\n", collector.Name, collector.Version)
+		for _, module := range modules.GetModules() {
+			fmt.Printf("* %s %s\n", module.Name, module.Version)
 		}
 	}
 }
@@ -115,9 +115,9 @@ var commands = []commandCategory{
 	{
 		Name: "DATA COLLECTION",
 		Commands: []cli.Flag{
-			&cli.StringFlag{Name: "collector", Aliases: []string{"m"}, Usage: "run collector and upload its archive", Action: validateCollector},
-			&cli.BoolFlag{Name: "collector-list", Usage: "list collectors"},
-			&cli.StringSliceFlag{Name: "collector-option", Aliases: []string{"opt"}, Usage: "set collector option"},
+			&cli.StringFlag{Name: "module", Aliases: []string{"m"}, Usage: "run module and upload its archive", Action: validateModule},
+			&cli.BoolFlag{Name: "module-list", Usage: "list modules"},
+			&cli.StringSliceFlag{Name: "module-option", Aliases: []string{"opt"}, Usage: "set module option"},
 			&cli.StringFlag{Name: "output-dir", Usage: "do not upload, collect into directory"},
 			&cli.StringFlag{Name: "output-file", Usage: "do not upload, collect into file"},
 			&cli.StringFlag{Name: "payload", Usage: "upload archive from this path"},
@@ -142,6 +142,7 @@ var commands = []commandCategory{
 			&cli.StringFlag{Name: "compressor", Usage: "ignored"},
 			&cli.BoolFlag{Name: "offline", Usage: "ignored"},
 			&cli.StringFlag{Name: "logging-file", Usage: "ignored"},
+			&cli.StringFlag{Name: "collector", Usage: "alias for -'m'"},
 			&cli.StringFlag{Name: "diagnosis", Usage: "alias for '-m advisor --opt=diagnosis'"},
 			&cli.BoolFlag{Name: "check-results", Usage: "alias for '-m advisor --opt=check-results'"},
 			&cli.BoolFlag{Name: "show-results", Usage: "alias for '-m advisor --opt=show-results'"},
@@ -221,9 +222,9 @@ func buildCLI() *cli.Command {
 	}
 }
 
-func validateCollector(_ context.Context, _ *cli.Command, collector string) error {
-	if _, err := collectors.GetCollector(collector); err != nil {
-		fmt.Printf("Error: invalid collector: '%s'\n", collector)
+func validateModule(_ context.Context, _ *cli.Command, name string) error {
+	if _, err := modules.GetModule(name); err != nil {
+		fmt.Printf("Error: invalid module: '%s'\n", name)
 		return err
 	}
 	return nil
@@ -247,9 +248,9 @@ type Arguments struct {
 	AnsibleHost      string
 	ResetAnsibleHost bool
 	Group            string
-	Collector        string
-	CollectorOptions []string
-	CollectorList    bool
+	Module           string
+	ModuleOptions    []string
+	ModuleList       bool
 	Payload          string
 	ContentType      string
 	OutputDir        string
@@ -265,16 +266,19 @@ type Arguments struct {
 //
 // It ensures flags that assume other flags are properly joined.
 func validateCLI(cmd *cli.Command) internal.IError {
+	// FIXME This logic may be broken since 'module' is aliased to 'collector'
+
 	// display deprecation notices
 	for oldCmd, newCmd := range map[string]string{
-		"diagnosis":        "--collector advisor --opt=diagnosis",
-		"check-results":    "--collector advisor --opt=check-results",
-		"show-results":     "--collector advisor --opt=show-results",
-		"list-specs":       "--collector advisor --opt=list-specs",
-		"compliance":       "--collector compliance",
+		"collector":        "--module",
+		"diagnosis":        "--module advisor --opt=diagnosis",
+		"check-results":    "--module advisor --opt=check-results",
+		"show-results":     "--module advisor --opt=show-results",
+		"list-specs":       "--module advisor --opt=list-specs",
+		"compliance":       "--module compliance",
 		"test-connection":  "--status",
-		"no-upload":        fmt.Sprintf("--output-file %sarchive-`date +%%s`", collectors.ArchiveDirectory),
-		"keep-archive":     fmt.Sprintf("--output-file %sarchive-`date +%%s`", collectors.ArchiveDirectory),
+		"no-upload":        fmt.Sprintf("--output-file %sarchive-`date +%%s`", modules.ArchiveDirectory),
+		"keep-archive":     fmt.Sprintf("--output-file %sarchive-`date +%%s`", modules.ArchiveDirectory),
 		"support":          "sosreport",
 		"enable-schedule":  "--register",
 		"disable-schedule": "--unregister",
@@ -292,8 +296,8 @@ func validateCLI(cmd *cli.Command) internal.IError {
 	for _, flags := range [][]string{
 		{"content-type", "payload"},
 		{"payload", "content-type"},
-		{"output-dir", "collector"},
-		{"output-file", "collector"},
+		{"output-dir", "module"},
+		{"output-file", "module"},
 	} {
 		if !cmd.IsSet(flags[0]) {
 			continue
@@ -310,13 +314,13 @@ func validateCLI(cmd *cli.Command) internal.IError {
 	// validate input: can't be used together
 	for _, flags := range [][]string{
 		// top-level commands with other top-level commands
-		{"register", "unregister", "status", "checkin", "collector", "collector-list"},
+		{"register", "unregister", "status", "checkin", "module", "module-list"},
 		// top-level commands with collector modifiers
-		{"register", "unregister", "status", "checkin", "collector-option"},
+		{"register", "unregister", "status", "checkin", "module-option"},
 		// top-level commands with upload modifiers
 		{"register", "unregister", "status", "checkin", "output-dir", "output-file"},
 		// 'group' can only be used alone or with 'register'
-		{"group", "unregister", "status", "checkin", "collector", "collector-list", "payload"},
+		{"group", "unregister", "status", "checkin", "module", "module-list", "payload"},
 		// collection flags
 		{"output-dir", "output-file"},
 	} {
@@ -346,16 +350,16 @@ func parseCLI(cmd *cli.Command) (*Arguments, internal.IError) {
 	arguments.OutputDir = cmd.String("output-dir")
 	arguments.OutputFile = cmd.String("output-file")
 	if cmd.IsSet("keep-archive") || cmd.IsSet("no-upload") {
-		arguments.OutputFile = filepath.Join(collectors.ArchiveDirectory, fmt.Sprintf("archive-%d.tar.xz", time.Now().Unix()))
+		arguments.OutputFile = filepath.Join(modules.ArchiveDirectory, fmt.Sprintf("archive-%d.tar.xz", time.Now().Unix()))
 	}
-	for _, option := range cmd.StringSlice("collector-option") {
-		arguments.CollectorOptions = append(arguments.CollectorOptions, "--"+option)
+	for _, option := range cmd.StringSlice("module-option") {
+		arguments.ModuleOptions = append(arguments.ModuleOptions, "--"+option)
 	}
 
 	// client
 	if cmd.IsSet("register") {
 		arguments.Register = true
-		arguments.Collector = collectors.GetDefaultCollector().Name
+		arguments.Module = modules.GetDefaultModule().Name
 		arguments.DisplayName = cmd.String("display-name")
 		arguments.AnsibleHost = cmd.String("ansible-host")
 		arguments.Group = cmd.String("group")
@@ -397,16 +401,20 @@ func parseCLI(cmd *cli.Command) (*Arguments, internal.IError) {
 	}
 
 	// data collection
-	if cmd.Bool("collector-list") {
-		arguments.CollectorList = true
+	if cmd.IsSet("module-list") {
+		arguments.ModuleList = true
 		return arguments, nil
 	}
-	if cmd.String("collector") != "" {
-		arguments.Collector = cmd.String("collector")
+	if cmd.IsSet("module") {
+		arguments.Module = cmd.String("module")
+		return arguments, nil
+	}
+	if cmd.IsSet("collector") {
+		arguments.Module = cmd.String("collector")
 		return arguments, nil
 	}
 	if cmd.Bool("compliance") {
-		arguments.Collector = "compliance"
+		arguments.Module = "compliance"
 		return arguments, nil
 	}
 	if cmd.IsSet("payload") && cmd.IsSet("payload") {
@@ -416,7 +424,7 @@ func parseCLI(cmd *cli.Command) (*Arguments, internal.IError) {
 	}
 
 	slog.Debug("no command supplied, defaulting to data collection")
-	arguments.Collector = collectors.GetDefaultCollector().Name
+	arguments.Module = modules.GetDefaultModule().Name
 	return arguments, nil
 }
 
@@ -458,11 +466,11 @@ func runCLI(_ context.Context, cmd *cli.Command) error {
 	if len(arguments.Group) > 0 {
 		return runGroup(arguments)
 	}
-	if arguments.CollectorList {
-		return runCollectorList()
+	if arguments.ModuleList {
+		return runModuleList()
 	}
-	if arguments.Collector != "" {
-		return runCollector(arguments)
+	if arguments.Module != "" {
+		return runModule(arguments)
 	}
 	if arguments.Payload != "" && arguments.ContentType != "" {
 		return runUploadExistingArchive(arguments)

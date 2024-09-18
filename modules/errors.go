@@ -1,4 +1,4 @@
-package collectors
+package modules
 
 import (
 	"errors"
@@ -6,8 +6,8 @@ import (
 )
 
 var (
-	ErrNoCollector = errors.New("no such collector")
-	ErrCollection  = errors.New("could not collect")
+	ErrNoModule = errors.New("no such module")
+	ErrRun      = errors.New("could not run module")
 )
 
 type IError interface {

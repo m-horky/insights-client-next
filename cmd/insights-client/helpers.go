@@ -10,8 +10,8 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/m-horky/insights-client-next/api/ingress"
-	"github.com/m-horky/insights-client-next/collectors"
 	"github.com/m-horky/insights-client-next/internal"
+	"github.com/m-horky/insights-client-next/modules"
 )
 
 var spin = spinner.New(spinner.CharSets[14], 100*time.Millisecond)
@@ -66,14 +66,14 @@ func writeInventoryGroup(group string) internal.IError {
 // or it writes it to a default directory location.
 //
 // Returns the path to the archive directory, collector's content type, and optional collection error.
-func collectArchive(collector *collectors.Collector, arguments *Arguments) (string, string, internal.IError) {
+func collectArchive(collector *modules.Module, arguments *Arguments) (string, string, internal.IError) {
 	if isRichOutput(arguments) {
 		spin.Suffix = fmt.Sprintf(" waiting for '%s' to collect its data", collector.Name)
 		spin.Start()
 		defer spin.Stop()
 	}
 
-	collector.ExecArgs = append(collector.ExecArgs, arguments.CollectorOptions...)
+	collector.ExecArgs = append(collector.ExecArgs, arguments.ModuleOptions...)
 
 	if arguments.OutputDir != "" {
 		archiveDirectory, err := collector.CollectToDirectory(arguments.OutputDir)

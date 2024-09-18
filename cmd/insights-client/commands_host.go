@@ -7,8 +7,8 @@ import (
 
 	"github.com/m-horky/insights-client-next/api/ingress"
 	"github.com/m-horky/insights-client-next/api/inventory"
-	"github.com/m-horky/insights-client-next/collectors"
 	"github.com/m-horky/insights-client-next/internal"
+	"github.com/m-horky/insights-client-next/modules"
 )
 
 func runStatus() internal.IError {
@@ -49,7 +49,7 @@ func runRegister(arguments *Arguments) internal.IError {
 		fmt.Println("Tags file updated.")
 	}
 
-	collector, err := collectors.GetCollector(arguments.Collector)
+	collector, err := modules.GetModule(arguments.Module)
 	if err != nil {
 		return err
 	}
@@ -65,7 +65,7 @@ func runRegister(arguments *Arguments) internal.IError {
 	}
 
 	// run the collection
-	arguments.Collector = collectors.GetDefaultCollector().Name
+	arguments.Module = modules.GetDefaultModule().Name
 	archiveDirectory, archiveContentType, err := collectArchive(collector, arguments)
 	if err != nil {
 		return err

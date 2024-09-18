@@ -1,4 +1,4 @@
-package collectors
+package modules
 
 // ArchiveDirectory is a filesystem directory in which the collectors should store
 // their data.

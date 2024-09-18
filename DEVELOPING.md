@@ -35,7 +35,7 @@ Every module MUST return `internal.IError`-compatible errors to allow for easy d
 
   Source code for the CLI itself.
 
-- `collectors/`
+- `modules/`
 
   Module managing communication with data collectors.
 

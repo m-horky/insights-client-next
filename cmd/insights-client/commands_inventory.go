@@ -76,5 +76,5 @@ func runGroup(arguments *Arguments) internal.IError {
 	fmt.Println("Tags file updated.")
 	return nil
 
-	// TODO Run minimal collection with just the tags data in the archive?
+	// TODO Collect minimal collection with just the tags data in the archive?
 }
