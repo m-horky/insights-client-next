@@ -44,9 +44,9 @@ func GetModule(name string) (*Module, IError) {
 	return nil, NewError(ErrNoModule, nil, fmt.Sprintf("Module not found: %s.", name))
 }
 
-func (m *Module) Run(action string) IError {
+func (m *Module) Run(subcommands []string) IError {
 	var stdout, stderr bytes.Buffer
-	args := []string{action}
+	args := subcommands
 	args = append(args, m.ExecArgs...)
 	cmd := exec.Command(m.Exec, args...)
 	cmd.Stdout = &stdout
@@ -90,9 +90,8 @@ func (m *Module) Collect() (string, IError) {
 // Takes and returns a path to a directory with collected data.
 func (m *Module) CollectToDirectory(archiveDirectory string) (string, IError) {
 	var stdout, stderr bytes.Buffer
-	args := []string{"collect"}
-	args = append(args, m.ExecArgs...)
-	cmd := exec.Command(m.Exec, args...)
+	m.ExecArgs = append(m.ExecArgs, "collect")
+	cmd := exec.Command(m.Exec, m.ExecArgs...)
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	cmd.Env = m.Env

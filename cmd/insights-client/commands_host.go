@@ -49,7 +49,7 @@ func runRegister(arguments *Arguments) internal.IError {
 		fmt.Println("Tags file updated.")
 	}
 
-	collector, err := modules.GetModule(arguments.Module)
+	collector, err := modules.GetModule(arguments.Module[0])
 	if err != nil {
 		return err
 	}
@@ -65,7 +65,7 @@ func runRegister(arguments *Arguments) internal.IError {
 	}
 
 	// run the collection
-	arguments.Module = modules.GetDefaultModule().Name
+	arguments.Module = []string{modules.GetDefaultModule().Name}
 	archiveDirectory, archiveContentType, err := collectArchive(collector, arguments)
 	if err != nil {
 		return err

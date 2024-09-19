@@ -22,8 +22,11 @@ func runModuleList() internal.IError {
 }
 
 func runModule(arguments *Arguments) internal.IError {
-	fmt.Println(arguments.ModuleOptions)
-	return nil
+	module, err := modules.GetModule(arguments.Module[0])
+	if err != nil {
+		return err
+	}
+	return module.Run(arguments.Module[1:])
 }
 
 func runModuleCollect(arguments *Arguments) internal.IError {
@@ -68,7 +71,7 @@ func runModuleCollect(arguments *Arguments) internal.IError {
 		}
 	}
 
-	collector, err := modules.GetModule(arguments.Module)
+	collector, err := modules.GetModule(arguments.Module[0])
 	if err != nil {
 		return err
 	}

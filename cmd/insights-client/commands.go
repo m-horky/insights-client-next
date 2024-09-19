@@ -115,8 +115,9 @@ var commands = []commandCategory{
 	{
 		Name: "DATA COLLECTION",
 		Commands: []cli.Flag{
-			&cli.StringFlag{Name: "module", Aliases: []string{"m"}, Usage: "run module and upload its archive", Action: validateModule},
+			&cli.StringSliceFlag{Name: "module", Aliases: []string{"m"}, Usage: "run module and upload its archive", Action: validateModule},
 			&cli.BoolFlag{Name: "module-list", Usage: "list modules"},
+			&cli.StringFlag{Name: "module-action", Usage: "run collection (default) or some action the module supports"},
 			&cli.StringSliceFlag{Name: "module-option", Aliases: []string{"opt"}, Usage: "set module option"},
 			&cli.StringFlag{Name: "output-dir", Usage: "do not upload, collect into directory"},
 			&cli.StringFlag{Name: "output-file", Usage: "do not upload, collect into file"},
@@ -222,8 +223,10 @@ func buildCLI() *cli.Command {
 	}
 }
 
-func validateModule(_ context.Context, _ *cli.Command, name string) error {
-	if _, err := modules.GetModule(name); err != nil {
+// validateModule ensures that the top-level module exists. Nested modules have to verify that
+// themselves.
+func validateModule(_ context.Context, _ *cli.Command, name []string) error {
+	if _, err := modules.GetModule(name[0]); err != nil {
 		fmt.Printf("Error: invalid module: '%s'\n", name)
 		return err
 	}
@@ -239,6 +242,7 @@ func validateFormat(_ context.Context, _ *cli.Command, format string) error {
 }
 
 type Arguments struct {
+	// TODO Introduce a flag for main action, then configuration for each of them
 	Register         bool
 	Unregister       bool
 	Status           bool
@@ -248,7 +252,7 @@ type Arguments struct {
 	AnsibleHost      string
 	ResetAnsibleHost bool
 	Group            string
-	Module           string
+	Module           []string
 	ModuleOptions    []string
 	ModuleList       bool
 	Payload          string
@@ -359,7 +363,7 @@ func parseCLI(cmd *cli.Command) (*Arguments, internal.IError) {
 	// client
 	if cmd.IsSet("register") {
 		arguments.Register = true
-		arguments.Module = modules.GetDefaultModule().Name
+		arguments.Module = []string{modules.GetDefaultModule().Name}
 		arguments.DisplayName = cmd.String("display-name")
 		arguments.AnsibleHost = cmd.String("ansible-host")
 		arguments.Group = cmd.String("group")
@@ -406,15 +410,15 @@ func parseCLI(cmd *cli.Command) (*Arguments, internal.IError) {
 		return arguments, nil
 	}
 	if cmd.IsSet("module") {
-		arguments.Module = cmd.String("module")
+		arguments.Module = cmd.StringSlice("module")
 		return arguments, nil
 	}
 	if cmd.IsSet("collector") {
-		arguments.Module = cmd.String("collector")
+		arguments.Module = cmd.StringSlice("collector")
 		return arguments, nil
 	}
 	if cmd.Bool("compliance") {
-		arguments.Module = "compliance"
+		arguments.Module = []string{"compliance"}
 		return arguments, nil
 	}
 	if cmd.IsSet("payload") && cmd.IsSet("payload") {
@@ -424,7 +428,7 @@ func parseCLI(cmd *cli.Command) (*Arguments, internal.IError) {
 	}
 
 	slog.Debug("no command supplied, defaulting to data collection")
-	arguments.Module = modules.GetDefaultModule().Name
+	arguments.Module = []string{modules.GetDefaultModule().Name}
 	return arguments, nil
 }
 
@@ -469,7 +473,7 @@ func runCLI(_ context.Context, cmd *cli.Command) error {
 	if arguments.ModuleList {
 		return runModuleList()
 	}
-	if arguments.Module != "" {
+	if len(arguments.Module) > 0 {
 		return runModule(arguments)
 	}
 	if arguments.Payload != "" && arguments.ContentType != "" {
