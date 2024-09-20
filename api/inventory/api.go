@@ -132,7 +132,7 @@ func UpdateDisplayName(insightsInventoryID, displayName string) api.IError {
 	}
 
 	if response.Code != 200 {
-		slog.Error("could not update host's display name", slog.Any("raw response", response.Data))
+		slog.Error("could not update host's display name", slog.Any("raw response", string(response.Data)))
 		return api.NewError(
 			api.ErrBadResponse,
 			nil,
@@ -178,7 +178,7 @@ func UpdateAnsibleHostname(insightsInventoryID, ansibleHostname string) api.IErr
 	}
 
 	if response.Code != 200 {
-		slog.Error("could not update host's display name", slog.Any("raw response", response.Data))
+		slog.Error("could not update host's display name", slog.Any("raw response", string(response.Data)))
 		return api.NewError(
 			api.ErrBadResponse,
 			nil,

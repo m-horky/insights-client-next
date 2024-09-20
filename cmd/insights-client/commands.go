@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/url"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"time"
 
@@ -16,6 +18,7 @@ import (
 	"github.com/m-horky/insights-client-next/api/ingress"
 	"github.com/m-horky/insights-client-next/api/inventory"
 	"github.com/m-horky/insights-client-next/internal"
+	"github.com/m-horky/insights-client-next/internal/impl"
 	"github.com/m-horky/insights-client-next/modules"
 )
 
@@ -115,9 +118,8 @@ var commands = []commandCategory{
 	{
 		Name: "DATA COLLECTION",
 		Commands: []cli.Flag{
-			&cli.StringSliceFlag{Name: "module", Aliases: []string{"m"}, Usage: "run module and upload its archive", Action: validateModule},
+			&cli.StringSliceFlag{Name: "module", Aliases: []string{"m", "collector"}, Usage: "run module and upload its archive", Action: validateModule},
 			&cli.BoolFlag{Name: "module-list", Usage: "list modules"},
-			&cli.StringFlag{Name: "module-action", Usage: "run collection (default) or some action the module supports"},
 			&cli.StringSliceFlag{Name: "module-option", Aliases: []string{"opt"}, Usage: "set module option"},
 			&cli.StringFlag{Name: "output-dir", Usage: "do not upload, collect into directory"},
 			&cli.StringFlag{Name: "output-file", Usage: "do not upload, collect into file"},
@@ -143,7 +145,6 @@ var commands = []commandCategory{
 			&cli.StringFlag{Name: "compressor", Usage: "ignored"},
 			&cli.BoolFlag{Name: "offline", Usage: "ignored"},
 			&cli.StringFlag{Name: "logging-file", Usage: "ignored"},
-			&cli.StringFlag{Name: "collector", Usage: "alias for -'m'"},
 			&cli.StringFlag{Name: "diagnosis", Usage: "alias for '-m advisor --opt=diagnosis'"},
 			&cli.BoolFlag{Name: "check-results", Usage: "alias for '-m advisor --opt=check-results'"},
 			&cli.BoolFlag{Name: "show-results", Usage: "alias for '-m advisor --opt=show-results'"},
@@ -223,14 +224,18 @@ func buildCLI() *cli.Command {
 	}
 }
 
-// validateModule ensures that the top-level module exists. Nested modules have to verify that
-// themselves.
-func validateModule(_ context.Context, _ *cli.Command, name []string) error {
-	if _, err := modules.GetModule(name[0]); err != nil {
-		fmt.Printf("Error: invalid module: '%s'\n", name)
-		return err
+// validateModule ensures that module exposes given subcommand.
+func validateModule(_ context.Context, _ *cli.Command, command []string) error {
+	for _, module := range modules.GetModules() {
+		for _, cmd := range module.Commands {
+			if reflect.DeepEqual(cmd, command) {
+				return nil
+			}
+		}
 	}
-	return nil
+
+	fmt.Printf("Error: No module implements requested command '%s'.", strings.Join(command, " "))
+	return errors.New("no module implements requested command")
 }
 
 func validateFormat(_ context.Context, _ *cli.Command, format string) error {
@@ -241,37 +246,13 @@ func validateFormat(_ context.Context, _ *cli.Command, format string) error {
 	return nil
 }
 
-type Arguments struct {
-	// TODO Introduce a flag for main action, then configuration for each of them
-	Register         bool
-	Unregister       bool
-	Status           bool
-	CheckIn          bool
-	DisplayName      string
-	ResetDisplayName bool
-	AnsibleHost      string
-	ResetAnsibleHost bool
-	Group            string
-	Module           []string
-	ModuleOptions    []string
-	ModuleList       bool
-	Payload          string
-	ContentType      string
-	OutputDir        string
-	OutputFile       string
-	Help             bool
-	Debug            bool
-	Format           internal.Format
-}
-
 // validateCLI performs input validation.
 //
-// It shows notices for commands that are deprecated.
+// It shows notices for flags that are deprecated.
 //
 // It ensures flags that assume other flags are properly joined.
 func validateCLI(cmd *cli.Command) internal.IError {
-	// FIXME This logic may be broken since 'module' is aliased to 'collector'
-
+	// FIXME This may need to be implement in a simpler way.
 	// display deprecation notices
 	for oldCmd, newCmd := range map[string]string{
 		"collector":        "--module",
@@ -281,8 +262,8 @@ func validateCLI(cmd *cli.Command) internal.IError {
 		"list-specs":       "--module advisor --opt=list-specs",
 		"compliance":       "--module compliance",
 		"test-connection":  "--status",
-		"no-upload":        fmt.Sprintf("--output-file %sarchive-`date +%%s`", modules.ArchiveDirectory),
-		"keep-archive":     fmt.Sprintf("--output-file %sarchive-`date +%%s`", modules.ArchiveDirectory),
+		"no-upload":        fmt.Sprintf("--output-file %sarchive-`date +%%s`", internal.ArchiveDirectoryParentPath),
+		"keep-archive":     fmt.Sprintf("--output-file %sarchive-`date +%%s`", internal.ArchiveDirectoryParentPath),
 		"support":          "sosreport",
 		"enable-schedule":  "--register",
 		"disable-schedule": "--unregister",
@@ -345,103 +326,124 @@ func validateCLI(cmd *cli.Command) internal.IError {
 }
 
 // parseCLI converts the cli.Command object into a clean structure.
-func parseCLI(cmd *cli.Command) (*Arguments, internal.IError) {
-	arguments := &Arguments{}
+func parseCLI(cmd *cli.Command) *impl.Input {
+	input := &impl.Input{}
+	input.Format = internal.MustParseFormat(cmd.String("format"))
+	input.Debug = cmd.IsSet("debug")
 
-	// flags
-	arguments.Format = internal.MustParseFormat(cmd.String("format"))
-	arguments.Debug = cmd.IsSet("debug")
-	arguments.OutputDir = cmd.String("output-dir")
-	arguments.OutputFile = cmd.String("output-file")
-	if cmd.IsSet("keep-archive") || cmd.IsSet("no-upload") {
-		arguments.OutputFile = filepath.Join(modules.ArchiveDirectory, fmt.Sprintf("archive-%d.tar.xz", time.Now().Unix()))
-	}
-	for _, option := range cmd.StringSlice("module-option") {
-		arguments.ModuleOptions = append(arguments.ModuleOptions, "--"+option)
+	if cmd.IsSet("help") {
+		input.Action = impl.AHelp
 	}
 
-	// client
-	if cmd.IsSet("register") {
-		arguments.Register = true
-		arguments.Module = []string{modules.GetDefaultModule().Name}
-		arguments.DisplayName = cmd.String("display-name")
-		arguments.AnsibleHost = cmd.String("ansible-host")
-		arguments.Group = cmd.String("group")
-		return arguments, nil
+	// host
+	if cmd.IsSet("register") && input.Action == impl.ANone {
+		input.Action = impl.ARegister
+		input.RegisterArgs = impl.ARegisterArgs{
+			Group:           cmd.String("group"),
+			DisplayName:     cmd.String("display-name"),
+			AnsibleHostname: cmd.String("ansible-host"),
+		}
 	}
-	if cmd.IsSet("unregister") {
-		arguments.Unregister = true
-		return arguments, nil
+	if cmd.IsSet("unregister") && input.Action == impl.ANone {
+		input.Action = impl.AUnregister
 	}
-	if cmd.IsSet("status") || cmd.IsSet("test-connection") {
-		arguments.Status = true
-		return arguments, nil
+	if cmd.IsSet("status") && input.Action == impl.ANone {
+		input.Action = impl.AStatus
 	}
-	if cmd.IsSet("checkin") {
-		arguments.CheckIn = true
-		return arguments, nil
+	if cmd.IsSet("checkin") && input.Action == impl.ANone {
+		input.Action = impl.ACheckIn
 	}
 
 	// inventory
-	if cmd.String("display-name") != "" {
-		arguments.DisplayName = cmd.String("display-name")
-		return arguments, nil
+	// TODO Enforce values for those, do not support reset, it should be explicit
+	//  (unless the ansible role does something with this)
+	if cmd.IsSet("display-name") && input.Action == impl.ANone {
+		if cmd.String("display-name") == "" {
+			input.Action = impl.AResetDisplayName
+		} else {
+			input.Action = impl.ASetDisplayName
+			input.SetDisplayNameArgs = impl.ASetDisplayNameArgs{Name: cmd.String("display-name")}
+		}
 	}
-	if cmd.IsSet("display-name") {
-		arguments.ResetDisplayName = true
-		return arguments, nil
-	}
-	if cmd.String("ansible-host") != "" {
-		arguments.AnsibleHost = cmd.String("ansible-host")
-		return arguments, nil
-	}
-	if cmd.IsSet("ansible-host") {
-		arguments.ResetAnsibleHost = true
-		return arguments, nil
-	}
-	if cmd.IsSet("group") {
-		arguments.Group = cmd.String("group")
-		return arguments, nil
+	if cmd.IsSet("ansible-host") && input.Action == impl.ANone {
+		if cmd.String("ansible-host") == "" {
+			input.Action = impl.AResetAnsibleHostname
+		} else {
+			input.Action = impl.ASetAnsibleHostname
+			input.SetAnsibleHostnameArgs = impl.ASetAnsibleHostnameArgs{Name: cmd.String("ansible-host")}
+		}
 	}
 
-	// data collection
+	// modules
 	if cmd.IsSet("module-list") {
-		arguments.ModuleList = true
-		return arguments, nil
+		input.Action = impl.AListModules
 	}
-	if cmd.IsSet("module") {
-		arguments.Module = cmd.StringSlice("module")
-		return arguments, nil
+	if (cmd.IsSet("module") || cmd.IsSet("collector")) && input.Action == impl.ANone {
+		input.Action = impl.ARunModule
+		collector := cmd.StringSlice("collector")
+		if cmd.IsSet("module") {
+			collector = cmd.StringSlice("module")
+		}
+		input.RunModuleArgs = impl.ARunModuleArgs{Name: collector}
 	}
-	if cmd.IsSet("collector") {
-		arguments.Module = cmd.StringSlice("collector")
-		return arguments, nil
-	}
-	if cmd.Bool("compliance") {
-		arguments.Module = []string{"compliance"}
-		return arguments, nil
-	}
-	if cmd.IsSet("payload") && cmd.IsSet("payload") {
-		arguments.Payload = cmd.String("payload")
-		arguments.ContentType = cmd.String("content-type")
-		return arguments, nil
+	if cmd.IsSet("payload") && cmd.IsSet("content-type") && input.Action == impl.ANone {
+		input.Action = impl.AUploadLocalArchive
+		input.UploadLocalArchiveArgs = impl.AUploadLocalArchiveArgs{
+			Path:        cmd.String("payload"),
+			ContentType: cmd.String("content-type"),
+		}
 	}
 
-	slog.Debug("no command supplied, defaulting to data collection")
-	arguments.Module = []string{modules.GetDefaultModule().Name}
-	return arguments, nil
+	// aliases
+	if cmd.IsSet("group") && input.Action == impl.ANone {
+		input.Action = impl.ARunModule
+		input.RunModuleArgs = impl.ARunModuleArgs{Name: []string{"advisor", "collect"}, Options: []string{"--group " + cmd.String("group")}}
+	}
+	if cmd.IsSet("compliance") && input.Action == impl.ANone {
+		input.Action = impl.ARunModule
+		input.RunModuleArgs = impl.ARunModuleArgs{Name: []string{"compliance", "collect"}}
+	}
+	if cmd.IsSet("check-results") && input.Action == impl.ANone {
+		input.Action = impl.ARunModule
+		input.RunModuleArgs = impl.ARunModuleArgs{Name: []string{"advisor", "check-results"}}
+	}
+	if cmd.IsSet("show-results") && input.Action == impl.ANone {
+		input.Action = impl.ARunModule
+		input.RunModuleArgs = impl.ARunModuleArgs{Name: []string{"advisor", "show-results"}}
+	}
+
+	if input.Action == impl.ANone {
+		input.Action = impl.ARunModule
+		input.RunModuleArgs = impl.ARunModuleArgs{Name: []string{"advisor", "collect"}, Options: parseModuleOptions(cmd.StringSlice("module-options"))}
+	}
+
+	// module flags
+	if input.Action == impl.ARunModule {
+		input.RunModuleArgs.OutputFile = filepath.Join(internal.ArchiveDirectoryParentPath, fmt.Sprintf("archive-%d.tar.xz", time.Now().Unix()))
+		input.RunModuleArgs.OutputDir = cmd.String("output-dir")
+		input.RunModuleArgs.OutputFile = cmd.String("output-file")
+		input.RunModuleArgs.Options = append(input.RunModuleArgs.Options, parseModuleOptions(cmd.StringSlice("module-option"))...)
+	}
+
+	return input
+}
+
+func parseModuleOptions(options []string) []string {
+	result := make([]string, 0)
+	for _, option := range options {
+		result = append(result, "--"+option)
+	}
+	return result
 }
 
 func runCLI(_ context.Context, cmd *cli.Command) error {
 	if err := validateCLI(cmd); err != nil {
 		return err
 	}
-	arguments, err := parseCLI(cmd)
-	if err != nil {
-		return err
-	}
 
-	if arguments.Help {
+	input := parseCLI(cmd)
+
+	if input.Action&impl.AHelp > 0 {
 		_ = cli.ShowAppHelp(cmd)
 		return nil
 	}
@@ -451,34 +453,24 @@ func runCLI(_ context.Context, cmd *cli.Command) error {
 		return internal.NewError(internal.ErrPermissions, nil, "This command has to be run with superuser privileges.")
 	}
 
-	// handle commands
-	if arguments.Register {
-		return runRegister(arguments)
+	switch input.Action {
+	case impl.ASetDisplayName:
+		return impl.RunSetDisplayName(input)
+	case impl.ASetAnsibleHostname:
+		return impl.RunSetAnsibleHostname(input)
+	case impl.ARegister:
+		return impl.RunRegister(input)
+	case impl.AUnregister:
+		return impl.RunUnregister(input)
+	case impl.AStatus:
+		return impl.RunStatus(input)
+	case impl.AListModules:
+		return impl.RunListModules(input)
+	case impl.ARunModule:
+		return nil // Call module, maybe upload archive, and exit.
+	case impl.AUploadLocalArchive:
+		return nil // Upload archive and exit.
+	default:
+		return internal.NewError(internal.ErrInput, fmt.Errorf("bad input: %#v", input), "Not implemented.")
 	}
-	if arguments.Unregister {
-		return runUnregister()
-	}
-	if arguments.Status {
-		return runStatus()
-	}
-	if arguments.DisplayName != "" || arguments.ResetDisplayName {
-		return runDisplayName(arguments)
-	}
-	if arguments.AnsibleHost != "" || arguments.ResetAnsibleHost {
-		return runAnsibleHostname(arguments)
-	}
-	if len(arguments.Group) > 0 {
-		return runGroup(arguments)
-	}
-	if arguments.ModuleList {
-		return runModuleList()
-	}
-	if len(arguments.Module) > 0 {
-		return runModule(arguments)
-	}
-	if arguments.Payload != "" && arguments.ContentType != "" {
-		return runUploadExistingArchive(arguments)
-	}
-
-	return internal.NewError(nil, nil, "Not implemented.")
 }

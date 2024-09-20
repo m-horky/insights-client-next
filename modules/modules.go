@@ -12,107 +12,94 @@ import (
 	"time"
 )
 
-// Module manages configuration required for data collection.
 type Module struct {
-	Name        string
-	Version     string
-	Env         []string
-	Exec        string
-	ExecArgs    []string
-	ContentType string
+	// Name is human- and machine-readable name.
+	Name string
+	// Version is the package version.
+	Version string
+	// Env is a list of environment variables that should always be set.
+	Env []string
+	// Exec is path to a binary which should be executed, followed by flags that should always be set.
+	Exec []string
+	// Commands is a list valid (nestable) subcommands.
+	Commands [][]string
+	// CollectCommand is executed to perform a collection. It must be part of Commands.
+	CollectCommand []string
+	// ArchiveContentType is used as HTTP Content-Type for uploaded data archive.
+	ArchiveContentType string
 }
 
-// GetModules gathers all available data collectors.
 func GetModules() []*Module {
 	return []*Module{
 		GetAdvisorModule(),
+		GetComplianceModule(),
+		GetMalwareModule(),
 	}
 }
 
-// GetDefaultModule returns the collector that should be run by default.
-func GetDefaultModule() *Module {
-	return GetAdvisorModule()
-}
-
-// GetModule filters available collectors by name.
 func GetModule(name string) (*Module, IError) {
 	for _, module := range GetModules() {
 		if module.Name == name {
 			return module, nil
 		}
 	}
-	return nil, NewError(ErrNoModule, nil, fmt.Sprintf("Module not found: %s.", name))
+	return nil, NewError(ErrNoModule, nil, fmt.Sprintf("Module not found: %s", name))
 }
 
-func (m *Module) Run(subcommands []string) IError {
+// CreateArchiveDirectory creates a new directory with semi-random name at `parent`
+// with permissions 750.
+func CreateArchiveDirectory(parent string) (string, IError) {
+	directory := path.Join(parent, fmt.Sprintf("archive-%d", time.Now().Unix()))
+	if err := os.Mkdir(directory, 0o750); err != nil {
+		return "", NewError(ErrRun, err, "Could not prepare archive directory.")
+	}
+	return directory, nil
+}
+
+// RunCommand executes module command.
+//
+// The shell command is constructed as `.Exec + command + args`.
+func (m *Module) RunCommand(command, args []string) IError {
 	var stdout, stderr bytes.Buffer
-	args := subcommands
-	args = append(args, m.ExecArgs...)
-	cmd := exec.Command(m.Exec, args...)
+	argv := m.Exec
+	argv = append(argv, command...)
+	argv = append(argv, args...)
+
+	cmd := exec.Command(argv[0], argv[1:]...)
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	cmd.Env = m.Env
 
 	slog.Debug(
-		"running module",
+		"running module command",
 		slog.String("name", m.Name),
 		slog.String("version", m.Version),
-		slog.String("exec", fmt.Sprintf("%s %s", m.Exec, strings.Join(m.ExecArgs, " "))),
-		slog.String("environment", strings.Join(cmd.Env, " ")),
+		slog.String("command", strings.Join(argv, " ")),
+		slog.String("environment", strings.Join(m.Env, " ")),
 	)
 
 	err := cmd.Run()
 	if err != nil {
+		slog.Error("module command failed", slog.String("error", err.Error()))
 		return NewError(
 			ErrRun,
 			errors.Join(err, errors.New(stderr.String())),
-			"Could not run module.",
+			"Could not run module command.",
 		)
 	}
 
+	slog.Debug("module command finished")
 	return nil
 }
 
-// Collect invokes the data collector.
+// Collect runs the module's collection command.
 //
-// Returns path to a directory with collected data.
-func (m *Module) Collect() (string, IError) {
-	archiveDirectory := path.Join(ArchiveDirectory, fmt.Sprintf("archive-%d", time.Now().Unix()))
-	if err := os.Mkdir(archiveDirectory, 0o750); err != nil {
-		return "", NewError(ErrRun, err, "Could not prepare archive directory.")
+// `directory` has to exist and has to be writable.
+func (m *Module) Collect(directory string, args []string) IError {
+	if len(m.CollectCommand) == 0 {
+		return NewError(ErrRun, nil, "Module does not have collection capabilities.")
 	}
 
-	return m.CollectToDirectory(archiveDirectory)
-}
-
-// CollectToDirectory invokes the module's data collector.
-//
-// Takes and returns a path to a directory with collected data.
-func (m *Module) CollectToDirectory(archiveDirectory string) (string, IError) {
-	var stdout, stderr bytes.Buffer
-	m.ExecArgs = append(m.ExecArgs, "collect")
-	cmd := exec.Command(m.Exec, m.ExecArgs...)
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	cmd.Env = m.Env
-	cmd.Env = append(cmd.Env, fmt.Sprintf("ARCHIVE=%s", archiveDirectory))
-
-	slog.Debug(
-		"running module",
-		slog.String("name", m.Name),
-		slog.String("version", m.Version),
-		slog.String("exec", fmt.Sprintf("%s %s", m.Exec, strings.Join(m.ExecArgs, " "))),
-		slog.String("environment", strings.Join(cmd.Env, " ")),
-	)
-
-	err := cmd.Run()
-	if err != nil {
-		return "", NewError(
-			ErrRun,
-			errors.Join(err, errors.New(stderr.String())),
-			"Could not run module's collector.",
-		)
-	}
-
-	return archiveDirectory, nil
+	args = append(args, fmt.Sprintf("--archive=%s", directory))
+	return m.RunCommand(m.CollectCommand, args)
 }

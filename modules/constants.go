@@ -1,5 +1,4 @@
 package modules
 
-// ArchiveDirectory is a filesystem directory in which the collectors should store
-// their data.
-var ArchiveDirectory = "/var/cache/insights-client/"
+// InsightsCorePath is a filesystem file with the Core.
+var InsightsCorePath = "/etc/insights-client/rpm.egg"
