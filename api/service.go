@@ -28,12 +28,15 @@ func NewService(address *url.URL) *Service {
 
 // WithAuthentication configures the service to use mTLS.
 func (s *Service) WithAuthentication(certificate, key string) *Service {
+	// TODO Should this make in-place change and only return an error instead?
+	// TODO How to handle non-existing certificate files?
 	return &Service{s.URL, s.Path, certificate, key, s.Proxy}
 }
 
 // WithProxy configures the service to use a HTTP(S) proxy.
 func (s *Service) WithProxy(address string) *Service {
 	// TODO Should this make in-place change and only return an error instead?
+	// TODO How to handle bad proxy input?
 
 	result := &Service{s.URL, s.Path, s.ClientCertificate, s.ClientKey, s.Proxy}
 	proxyURL, err := url.Parse(address)
