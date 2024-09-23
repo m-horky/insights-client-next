@@ -23,8 +23,8 @@ type Module struct {
 	Exec []string
 	// Commands is a list valid (nestable) subcommands.
 	Commands [][]string
-	// CollectCommand is executed to perform a collection. It must be part of Commands.
-	CollectCommand []string
+	// ArchiveCommand is executed to perform a collection. It must be part of Commands.
+	ArchiveCommand []string
 	// ArchiveContentType is used as HTTP Content-Type for uploaded data archive.
 	ArchiveContentType string
 }
@@ -96,10 +96,10 @@ func (m *Module) RunCommand(command, args []string) IError {
 //
 // `directory` has to exist and has to be writable.
 func (m *Module) Collect(directory string, args []string) IError {
-	if len(m.CollectCommand) == 0 {
+	if len(m.ArchiveCommand) == 0 {
 		return NewError(ErrRun, nil, "Module does not have collection capabilities.")
 	}
 
 	args = append(args, fmt.Sprintf("--archive=%s", directory))
-	return m.RunCommand(m.CollectCommand, args)
+	return m.RunCommand(m.ArchiveCommand, args)
 }

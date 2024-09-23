@@ -23,7 +23,7 @@ func GetAdvisorModule() *Module {
 			{"advisor", "list-specs"},
 			{"advisor", "diagnosis"},
 		},
-		CollectCommand:     []string{"advisor", "collect"},
+		ArchiveCommand:     []string{"advisor", "collect"},
 		ArchiveContentType: "application/vnd.redhat.advisor.collection",
 	}
 }
@@ -38,7 +38,8 @@ func GetComplianceModule() *Module {
 			{"compliance"},
 			{"compliance", "collect"},
 		},
-		CollectCommand: []string{"compliance", "collect"},
+		ArchiveCommand:     []string{"compliance", "collect"},
+		ArchiveContentType: "application/vnd.redhat.compliance.something",
 	}
 }
 
@@ -52,7 +53,8 @@ func GetMalwareModule() *Module {
 			{"malware"},
 			{"malware", "collect"},
 		},
-		CollectCommand: []string{"malware", "collect"},
+		ArchiveCommand:     []string{"malware", "collect"},
+		ArchiveContentType: "application/vnd.redhat.malware-detection.results",
 	}
 }
 
