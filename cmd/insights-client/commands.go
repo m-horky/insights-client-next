@@ -396,6 +396,8 @@ func parseCLI(cmd *cli.Command) *impl.Input {
 
 	// aliases
 	if cmd.IsSet("group") && input.Action == impl.ANone {
+		// TODO We should support --group with --offline/--no-upload
+		// TODO Ensure this works with --output-dir and --output-path
 		input.Action = impl.ARunModule
 		input.RunModuleArgs = impl.ARunModuleArgs{Name: []string{"advisor", "collect"}, Options: []string{"--group " + cmd.String("group")}}
 	}
