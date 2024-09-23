@@ -39,7 +39,7 @@ func GetHost(insightsClientID string) (*Host, api.IError) {
 			api.ErrBadResponse,
 			nil,
 			response,
-			"Host inventory returned bad response.",
+			getHumanErrorOnNon200(response.Code),
 		)
 	}
 
