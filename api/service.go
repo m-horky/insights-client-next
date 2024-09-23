@@ -93,7 +93,7 @@ func (s *Service) MakeRequest(
 	}
 
 	{
-		attrs := []any{slog.String("URL", fullUrl), slog.Any("headers", req.Header)}
+		attrs := []any{slog.String("method", method), slog.String("URL", fullUrl), slog.Any("headers", req.Header)}
 		if s.Proxy != nil {
 			attrs = append(attrs, slog.String("proxy", s.Proxy.String()))
 		}
