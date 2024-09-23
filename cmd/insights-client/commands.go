@@ -375,7 +375,7 @@ func parseCLI(cmd *cli.Command) *impl.Input {
 	}
 
 	// modules
-	if cmd.IsSet("module-list") {
+	if cmd.IsSet("module-list") && input.Action == impl.ANone {
 		input.Action = impl.AListModules
 	}
 	if (cmd.IsSet("module") || cmd.IsSet("collector")) && input.Action == impl.ANone {
@@ -443,7 +443,7 @@ func runCLI(_ context.Context, cmd *cli.Command) error {
 
 	input := parseCLI(cmd)
 
-	if input.Action&impl.AHelp > 0 {
+	if input.Action == impl.AHelp {
 		_ = cli.ShowAppHelp(cmd)
 		return nil
 	}
