@@ -145,7 +145,7 @@ var commands = []commandCategory{
 			&cli.StringFlag{Name: "compressor", Usage: "ignored"},
 			&cli.BoolFlag{Name: "offline", Usage: "ignored"},
 			&cli.StringFlag{Name: "logging-file", Usage: "ignored"},
-			&cli.StringFlag{Name: "diagnosis", Usage: "alias for '-m advisor --opt=diagnosis'"},
+			&cli.BoolFlag{Name: "diagnosis", Usage: "alias for '-m advisor --opt=diagnosis'"},
 			&cli.BoolFlag{Name: "check-results", Usage: "alias for '-m advisor --opt=check-results'"},
 			&cli.BoolFlag{Name: "show-results", Usage: "alias for '-m advisor --opt=show-results'"},
 			&cli.BoolFlag{Name: "list-specs", Usage: "alias for '-m advisor --opt=list-specs'"},
@@ -252,77 +252,120 @@ func validateFormat(_ context.Context, _ *cli.Command, format string) error {
 //
 // It ensures flags that assume other flags are properly joined.
 func validateCLI(cmd *cli.Command) internal.IError {
-	// FIXME This may need to be implement in a simpler way.
-	// display deprecation notices
-	for oldCmd, newCmd := range map[string]string{
-		"collector":        "--module",
-		"diagnosis":        "--module advisor --opt=diagnosis",
-		"check-results":    "--module advisor --opt=check-results",
-		"show-results":     "--module advisor --opt=show-results",
-		"list-specs":       "--module advisor --opt=list-specs",
-		"compliance":       "--module compliance",
-		"test-connection":  "--status",
-		"no-upload":        fmt.Sprintf("--output-file %sarchive-`date +%%s`", internal.ArchiveDirectoryParentPath),
-		"keep-archive":     fmt.Sprintf("--output-file %sarchive-`date +%%s`", internal.ArchiveDirectoryParentPath),
-		"support":          "sosreport",
-		"enable-schedule":  "--register",
-		"disable-schedule": "--unregister",
-	} {
-		if cmd.IsSet(oldCmd) {
-			fmt.Printf("Notice: Flag '--%s' is deprecated, use '%s' instead.\n", oldCmd, newCmd)
-		}
-	}
-	for _, ignored := range []string{"retry", "validate", "quiet", "silent", "conf", "compressor", "offline", "logging-file"} {
-		if cmd.IsSet(ignored) {
-			fmt.Printf("Notice: Flag '--%s' is deprecated and has no effect.\n", ignored)
-		}
-	}
-	// validate input: first flag requires others
-	for _, flags := range [][]string{
-		{"content-type", "payload"},
+	globalFlags := []string{"format", "debug"}
+
+	// this includes the list of all valid combinations
+	flagCombinations := [][]string{
+		{"register"},
+		{"register", "display-name"},
+		{"register", "ansible-host"},
+		{"register", "display-name", "ansible-host"},
+		{"register", "group"},
+		{"register", "group", "display-name"},
+		{"register", "group", "ansible-host"},
+		{"register", "group", "display-name", "ansible-host"},
+		{"unregister"},
+		{"status"},
+		{"checkin"},
+		{"display-name"},
+		{"ansible-host"},
+		{"group"},
+		{"group", "offline"},
+		{"module"},
+		{"module", "module-option"},
+		{"module-list"},
+		{"output-dir"},
+		{"output-file"},
+		{"module", "output-dir"},
+		{"module", "output-file"},
+		{"module", "module-option", "output-dir"},
+		{"module", "module-option", "output-file"},
 		{"payload", "content-type"},
-		{"output-dir", "module"},
-		{"output-file", "module"},
-	} {
-		if !cmd.IsSet(flags[0]) {
-			continue
-		}
-		for _, otherFlag := range flags[1:] {
-			if !cmd.IsSet(otherFlag) {
-				return internal.NewError(internal.ErrInput, nil, fmt.Sprintf(
-					"Flag '--%s' also requires '--%s'.", flags[0], strings.Join(flags[1:], "', --'"),
-				))
-			}
-		}
 	}
-	// FIXME This works but isn't nice, is there a better way?
-	// validate input: can't be used together
-	for _, flags := range [][]string{
-		// top-level commands with other top-level commands
-		{"register", "unregister", "status", "checkin", "module", "module-list"},
-		// top-level commands with collector modifiers
-		{"register", "unregister", "status", "checkin", "module-option"},
-		// top-level commands with upload modifiers
-		{"register", "unregister", "status", "checkin", "output-dir", "output-file"},
-		// 'group' can only be used alone or with 'register'
-		{"group", "unregister", "status", "checkin", "module", "module-list", "payload"},
-		// collection flags
-		{"output-dir", "output-file"},
-	} {
-		var usedFlags []string
-		for _, flag := range flags {
-			if cmd.IsSet(flag) {
-				usedFlags = append(usedFlags, flag)
+
+	// key holds the primary flag we match by, the rest is modifiers
+	setFlags := make(map[string]bool)
+
+	for _, flag := range cmd.Flags {
+		flagName := flag.Names()[0]
+
+		if cmd.IsSet(flagName) {
+			// resolve aliased commands
+			resolvedFlagName, resolvedFlagNameOptions := resolveAlias(flagName)
+			// announce deprecated & with no effect
+			if resolvedFlagName == "" {
+				fmt.Printf("Notice: Flag '--%s' is deprecated and has no effect.\n", flagName)
+				continue
 			}
-		}
-		if len(usedFlags) > 1 {
-			return internal.NewError(internal.ErrInput, nil, fmt.Sprintf(
-				"Some flags can't be used together: '--%s'.", strings.Join(usedFlags, "', '--")),
-			)
+			// announce deprecated & aliased
+			if resolvedFlagName != flagName {
+				if resolvedFlagNameOptions != "" {
+					resolvedFlagName += "" + resolvedFlagNameOptions
+				}
+				fmt.Printf("Notice: Flag '--%s' is deprecated, use '--%s' instead.\n", flagName, resolvedFlagName)
+			}
+
+			// we don't need to check global flags, they can be applied to everything
+			flagIsGlobal := false
+			for _, globalFlag := range globalFlags {
+				if resolvedFlagName == globalFlag {
+					flagIsGlobal = true
+					break
+				}
+			}
+			if flagIsGlobal {
+				continue
+			}
+
+			if _, found := setFlags[resolvedFlagName]; found {
+				// resolved flags conflict (e.g. `--compliance --diagnosis`)
+				return internal.NewError(internal.ErrInput, errors.New("found conflict in module flags"), "This flag combination is not valid.")
+			}
+			setFlags[resolvedFlagName] = true
 		}
 	}
 
-	return nil
+	// exit immediately if we find combination match: validation is complete
+	var finalFlags []string
+	for flag := range setFlags {
+		finalFlags = append(finalFlags, flag)
+	}
+	for _, combination := range flagCombinations {
+		if reflect.DeepEqual(combination, finalFlags) {
+			return nil
+		}
+	}
+
+	// TODO Display all flag combinations that use the entered flags
+
+	return internal.NewError(internal.ErrInput, errors.New("found generic flag conflict"), "This flag combination is not valid.")
+}
+
+// resolveAlias is used by validateCLI during flag combination check.
+//
+// A flag may be defined as an alias; this ensures we do not need to check them.
+//
+// Returns the input if the command is not an alias, empty string if the alias is noop, new string for resolved flag.
+// Because this feeds directly into text notification about the alias, a slice is always returned. Only the first
+// item will be used for comparison, full slice is used to display the help text.
+func resolveAlias(flag string) (string, string) {
+	switch flag {
+	case "retry", "validate", "quiet", "silent", "conf", "compressor", "logging-file":
+		return "", ""
+	case "diagnosis", "check-results", "show-results", "list-specs":
+		return "module", "=advisor --module-option=" + flag
+	case "compliance":
+		return "module", "=compliance"
+	case "test-connection":
+		return "status", ""
+	case "no-upload", "keep-archive":
+		return "output-file", ""
+	case "enable-schedule":
+		return "register", ""
+	case "disable-schedule":
+		return "unregister", ""
+	}
+	return flag, ""
 }
 
 // parseCLI converts the cli.Command object into a clean structure.
