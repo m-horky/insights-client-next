@@ -41,9 +41,7 @@ const (
 	AStatus
 	ACheckIn
 	ASetDisplayName
-	AResetDisplayName
 	ASetAnsibleHostname
-	AResetAnsibleHostname
 	AListModules
 	ARunModule
 	AUploadLocalArchive

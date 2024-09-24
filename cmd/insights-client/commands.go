@@ -404,23 +404,13 @@ func parseCLI(cmd *cli.Command) *impl.Input {
 	}
 
 	// inventory
-	// TODO Enforce values for those, do not support reset, it should be explicit
-	//  (unless the ansible role does something with this)
 	if cmd.IsSet("display-name") && input.Action == impl.ANone {
-		if cmd.String("display-name") == "" {
-			input.Action = impl.AResetDisplayName
-		} else {
-			input.Action = impl.ASetDisplayName
-			input.SetDisplayNameArgs = impl.ASetDisplayNameArgs{Name: cmd.String("display-name")}
-		}
+		input.Action = impl.ASetDisplayName
+		input.SetDisplayNameArgs = impl.ASetDisplayNameArgs{Name: cmd.String("display-name")}
 	}
 	if cmd.IsSet("ansible-host") && input.Action == impl.ANone {
-		if cmd.String("ansible-host") == "" {
-			input.Action = impl.AResetAnsibleHostname
-		} else {
-			input.Action = impl.ASetAnsibleHostname
-			input.SetAnsibleHostnameArgs = impl.ASetAnsibleHostnameArgs{Name: cmd.String("ansible-host")}
-		}
+		input.Action = impl.ASetAnsibleHostname
+		input.SetAnsibleHostnameArgs = impl.ASetAnsibleHostnameArgs{Name: cmd.String("ansible-host")}
 	}
 
 	// modules

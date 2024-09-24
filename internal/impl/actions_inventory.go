@@ -50,6 +50,10 @@ func RunStatus(input *Input) internal.IError {
 
 // RunSetDisplayName calls Inventory API.
 func RunSetDisplayName(input *Input) internal.IError {
+	if input.SetDisplayNameArgs.Name == "" {
+		return internal.NewError(internal.ErrInput, nil, "Display name cannot be empty.")
+	}
+
 	Spinner.Maybe(input, "Fetching host record from Inventory.")
 	host, err := getCurrentInventoryHost()
 	Spinner.Stop()
@@ -69,6 +73,10 @@ func RunSetDisplayName(input *Input) internal.IError {
 
 // RunSetAnsibleHostname calls Inventory API.
 func RunSetAnsibleHostname(input *Input) internal.IError {
+	if input.SetAnsibleHostnameArgs.Name == "" {
+		return internal.NewError(internal.ErrInput, nil, "Ansible hostname cannot be empty.")
+	}
+
 	Spinner.Maybe(input, "Fetching host record from Inventory.")
 	host, err := getCurrentInventoryHost()
 	Spinner.Stop()
