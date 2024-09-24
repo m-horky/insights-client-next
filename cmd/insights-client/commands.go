@@ -105,6 +105,8 @@ var commands = []commandCategory{
 			&cli.BoolFlag{Name: "unregister", Usage: "unregister the host"},
 			&cli.BoolFlag{Name: "status", Usage: "display host status"},
 			&cli.BoolFlag{Name: "checkin", Usage: "send lightweight check-in notification"},
+			&cli.BoolFlag{Name: "test-connection", Usage: "test API connectivity"},
+			&cli.BoolFlag{Name: "support", Usage: "generate data for customer support"},
 		},
 	},
 	{
@@ -132,6 +134,7 @@ var commands = []commandCategory{
 		Commands: []cli.Flag{
 			&cli.StringFlag{Name: "format", Value: "human", Action: validateFormat, Usage: "change output format"},
 			&cli.BoolFlag{Name: "debug", Usage: "print logs to stderr instead of a log file"},
+			&cli.BoolFlag{Name: "offline", Usage: "for some commands, only do local changes"},
 		},
 	},
 	{
@@ -143,17 +146,14 @@ var commands = []commandCategory{
 			&cli.BoolFlag{Name: "silent", Usage: "ignored"},
 			&cli.StringFlag{Name: "conf", Aliases: []string{"c"}, Usage: "ignored"},
 			&cli.StringFlag{Name: "compressor", Usage: "ignored"},
-			&cli.BoolFlag{Name: "offline", Usage: "ignored"},
 			&cli.StringFlag{Name: "logging-file", Usage: "ignored"},
 			&cli.BoolFlag{Name: "diagnosis", Usage: "alias for '-m advisor --opt=diagnosis'"},
 			&cli.BoolFlag{Name: "check-results", Usage: "alias for '-m advisor --opt=check-results'"},
 			&cli.BoolFlag{Name: "show-results", Usage: "alias for '-m advisor --opt=show-results'"},
 			&cli.BoolFlag{Name: "list-specs", Usage: "alias for '-m advisor --opt=list-specs'"},
 			&cli.BoolFlag{Name: "compliance", Usage: "alias for '-m compliance'"},
-			&cli.BoolFlag{Name: "test-connection", Usage: "alias for '--status'"},
 			&cli.BoolFlag{Name: "no-upload", Usage: "alias for '--output-file [PATH]'"},
 			&cli.BoolFlag{Name: "keep-archive", Usage: "alias for '--output-file [PATH]'"},
-			&cli.BoolFlag{Name: "support", Usage: "alias for 'sosreport'"},
 			&cli.BoolFlag{Name: "enable-schedule", Usage: "alias for '--register'"},
 			&cli.BoolFlag{Name: "disable-schedule", Usage: "alias for '--unregister'"},
 		},
@@ -281,6 +281,8 @@ func validateCLI(cmd *cli.Command) internal.IError {
 		{"module", "module-option", "output-dir"},
 		{"module", "module-option", "output-file"},
 		{"payload", "content-type"},
+		{"test-connection"},
+		{"support"},
 	}
 
 	// key holds the primary flag we match by, the rest is modifiers
@@ -356,8 +358,6 @@ func resolveAlias(flag string) (string, string) {
 		return "module", "=advisor --module-option=" + flag
 	case "compliance":
 		return "module", "=compliance"
-	case "test-connection":
-		return "status", ""
 	case "no-upload", "keep-archive":
 		return "output-file", ""
 	case "enable-schedule":
@@ -395,6 +395,12 @@ func parseCLI(cmd *cli.Command) *impl.Input {
 	}
 	if cmd.IsSet("checkin") && input.Action == impl.ANone {
 		input.Action = impl.ACheckIn
+	}
+	if cmd.IsSet("test-connection") && input.Action == impl.ANone {
+		input.Action = impl.ATestConnection
+	}
+	if cmd.IsSet("support") && input.Action == impl.ANone {
+		input.Action = impl.ASupport
 	}
 
 	// inventory
@@ -438,11 +444,15 @@ func parseCLI(cmd *cli.Command) *impl.Input {
 	}
 
 	// aliases
+	if cmd.IsSet("group") && cmd.IsSet("offline") && input.Action == impl.ANone {
+		input.Action = impl.ASetGroupLocally
+	}
 	if cmd.IsSet("group") && input.Action == impl.ANone {
-		// TODO We should support --group with --offline/--no-upload
-		// TODO Ensure this works with --output-dir and --output-path
 		input.Action = impl.ARunModule
-		input.RunModuleArgs = impl.ARunModuleArgs{Name: []string{"advisor", "collect"}, Options: []string{"--group " + cmd.String("group")}}
+		input.RunModuleArgs = impl.ARunModuleArgs{
+			Name:    []string{"advisor", "collect"},
+			Options: []string{"--group " + cmd.String("group")},
+		}
 	}
 	if cmd.IsSet("compliance") && input.Action == impl.ANone {
 		input.Action = impl.ARunModule
@@ -511,10 +521,6 @@ func runCLI(_ context.Context, cmd *cli.Command) error {
 		return impl.RunStatus(input)
 	case impl.AListModules:
 		return impl.RunListModules(input)
-	case impl.ARunModule:
-		return nil // Call module, maybe upload archive, and exit.
-	case impl.AUploadLocalArchive:
-		return nil // Upload archive and exit.
 	default:
 		return internal.NewError(internal.ErrInput, fmt.Errorf("bad input: %#v", input), "Not implemented.")
 	}

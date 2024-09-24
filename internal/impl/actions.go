@@ -47,6 +47,9 @@ const (
 	AListModules
 	ARunModule
 	AUploadLocalArchive
+	ATestConnection
+	ASupport
+	ASetGroupLocally
 )
 
 type Input struct {
@@ -77,6 +80,7 @@ type ASetAnsibleHostnameArgs struct {
 type ARunModuleArgs struct {
 	Name       []string
 	Options    []string
+	Offline    bool
 	OutputDir  string
 	OutputFile string
 }
