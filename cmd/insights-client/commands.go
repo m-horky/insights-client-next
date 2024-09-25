@@ -511,6 +511,8 @@ func runCLI(_ context.Context, cmd *cli.Command) error {
 		return impl.RunStatus(input)
 	case impl.AListModules:
 		return impl.RunListModules(input)
+	case impl.ACheckIn:
+		return impl.RunCheckIn(input)
 	default:
 		return internal.NewError(internal.ErrInput, fmt.Errorf("bad input: %#v", input), "Not implemented.")
 	}

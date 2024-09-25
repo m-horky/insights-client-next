@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
+	"os"
 
 	"github.com/m-horky/insights-client-next/api"
+	"github.com/m-horky/insights-client-next/internal"
 )
 
 var service api.Service
@@ -187,4 +189,57 @@ func UpdateAnsibleHostname(insightsInventoryID, ansibleHostname string) api.IErr
 		)
 	}
 	return nil
+}
+
+// CheckIn sends in a minimal set of host information.
+func CheckIn() api.IError {
+	slog.Debug("collecting canonical facts")
+	data := map[string]string{}
+
+	// TODO Collect all canonical facts.
+	{ // insights-client
+		value, err := os.ReadFile(internal.MachineIDFilePath)
+		if err != nil {
+			return api.NewError(api.ErrUnparseable, err, nil, "Could not read machine-id file.")
+		}
+		data["insights_id"] = string(value)
+	}
+
+	body, err := json.Marshal(data)
+	if err != nil {
+		slog.Error("could not encode payload", slog.String("error", err.Error()))
+		return api.NewError(
+			api.ErrUnparseable,
+			err,
+			nil,
+			"Could not encode payload.",
+		)
+	}
+
+	response, err := service.MakeRequest(
+		"POST",
+		"hosts/checkin",
+		url.Values{},
+		map[string][]string{"Content-Type": {"application/json"}},
+		bytes.NewBuffer(body),
+	)
+	if err != nil {
+		slog.Error("could not contact HBI", slog.String("error", err.Error()))
+		return api.NewError(
+			api.ErrServiceUnreachable,
+			err,
+			nil,
+			"Host inventory could not be contacted.",
+		)
+	}
+	if response.Code == 201 {
+		return nil
+	}
+
+	if response.Code == 404 {
+		return api.NewError(ErrNoHost, nil, response, "This host is not registered.")
+	}
+	return api.NewError(
+		api.ErrBadResponse, nil, response, "Host inventory returned bad response.",
+	)
 }

@@ -28,6 +28,21 @@ func getCurrentInventoryHost() (*inventory.Host, internal.IError) {
 	return inventory.GetHost(strings.TrimSpace(string(insightsClientID)))
 }
 
+func RunCheckIn(input *Input) internal.IError {
+	Spinner.Maybe(input, "Updating host record in Inventory.")
+	err := inventory.CheckIn()
+	Spinner.Stop()
+	if err != nil && err.Is(inventory.ErrNoHost) {
+		fmt.Println("This host is not registered")
+	}
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Checked in.")
+	return nil
+}
+
 // RunStatus calls Inventory API.
 func RunStatus(input *Input) internal.IError {
 	Spinner.Maybe(input, "Fetching host record from Inventory.")
