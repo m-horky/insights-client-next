@@ -95,7 +95,7 @@ func UploadArchive(archive Archive) (*Uploaded, api.IError) {
 		slog.Error(
 			"server rejected the archive",
 			slog.Int("status code", response.Code),
-			slog.Any("raw response", response.Data),
+			slog.String("raw response", string(response.Data)),
 		)
 		return nil, api.NewError(
 			api.ErrBadResponse,
@@ -110,7 +110,7 @@ func UploadArchive(archive Archive) (*Uploaded, api.IError) {
 		slog.Error(
 			"could not unmarshal response",
 			slog.String("error", err.Error()),
-			slog.Any("raw response", response.Data),
+			slog.String("raw response", string(response.Data)),
 		)
 		return nil, api.NewError(
 			api.ErrUnparseable,
