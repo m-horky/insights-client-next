@@ -103,6 +103,22 @@ func RunUnregister(input *Input) internal.IError {
 	return nil
 }
 
+// RunSetGroupLocally updates tags.yaml file. It does not perform data collection.
+func RunSetGroupLocally(input *Input) internal.IError {
+	// TODO
+	return internal.NewError(internal.ErrInput, nil, "Archive upload is not implemented.")
+}
+
+func RunTestConnection(input *Input) internal.IError {
+	// TODO
+	return internal.NewError(internal.ErrInput, nil, "Network testing is not implemented.")
+}
+
+func RunSupport(input *Input) internal.IError {
+	// TODO
+	return internal.NewError(internal.ErrInput, nil, "Customer support is not implemented.")
+}
+
 // registerLocally creates, updates and deletes local files.
 func registerLocally(rhsm string) internal.IError {
 	// write /etc/insights-client/machine-id

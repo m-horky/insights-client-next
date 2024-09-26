@@ -504,20 +504,28 @@ func runCLI(_ context.Context, cmd *cli.Command) error {
 	}
 
 	switch input.Action {
-	case impl.ASetDisplayName:
-		return impl.RunSetDisplayName(input)
-	case impl.ASetAnsibleHostname:
-		return impl.RunSetAnsibleHostname(input)
 	case impl.ARegister:
 		return impl.RunRegister(input)
 	case impl.AUnregister:
 		return impl.RunUnregister(input)
 	case impl.AStatus:
 		return impl.RunStatus(input)
-	case impl.AListModules:
-		return impl.RunListModules(input)
 	case impl.ACheckIn:
 		return impl.RunCheckIn(input)
+	case impl.ASetDisplayName:
+		return impl.RunSetDisplayName(input)
+	case impl.ASetAnsibleHostname:
+		return impl.RunSetAnsibleHostname(input)
+	case impl.AListModules:
+		return impl.RunListModules(input)
+	case impl.AUploadLocalArchive:
+		return impl.RunUploadLocalArchive(input)
+	case impl.ATestConnection:
+		return impl.RunTestConnection(input)
+	case impl.ASupport:
+		return impl.RunSupport(input)
+	case impl.ASetGroupLocally:
+		return impl.RunSetGroupLocally(input)
 	default:
 		return internal.NewError(internal.ErrInput, fmt.Errorf("bad input: %#v", input), "Not implemented.")
 	}
