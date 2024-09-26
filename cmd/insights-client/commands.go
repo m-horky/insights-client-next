@@ -327,7 +327,11 @@ func validateCLI(cmd *cli.Command) internal.IError {
 		}
 	}
 
-	// exit immediately if we find combination match: validation is complete
+	// Exit immediately if no flags were entered. Global flags are not considered.
+	if len(setFlags) == 0 {
+		return nil
+	}
+	// Exit immediately if we find combination match: validation is complete. Global flags are not considered.
 	var finalFlags []string
 	for flag := range setFlags {
 		finalFlags = append(finalFlags, flag)
@@ -339,6 +343,7 @@ func validateCLI(cmd *cli.Command) internal.IError {
 	}
 
 	// TODO Display all flag combinations that use the entered flags
+	//  "Did you mean...?"
 
 	return internal.NewError(internal.ErrInput, errors.New("found generic flag conflict"), "This flag combination is not valid.")
 }
