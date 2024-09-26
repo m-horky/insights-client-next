@@ -53,12 +53,13 @@ func RunRegister(input *Input) internal.IError {
 	defer os.Remove(archiveFile)
 
 	Spinner.Maybe(input, "Uploading data archive.")
-	if _, err = ingress.UploadArchive(
+	_, err = ingress.UploadArchive(
 		ingress.Archive{Path: archiveFile, ContentType: module.ArchiveContentType + "+tar.xz"},
-	); err != nil {
+	)
+	Spinner.Stop()
+	if err != nil {
 		return err
 	}
-	Spinner.Stop()
 
 	if err = registerLocally(rhsm); err != nil {
 		return err
