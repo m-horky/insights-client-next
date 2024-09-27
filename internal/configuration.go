@@ -43,7 +43,7 @@ func (c *Configuration) update(data map[string]string) {
 			if number, err := strconv.ParseUint(value, 10, 32); err == nil {
 				c.APIPort = uint(number)
 			} else {
-				slog.Warn("ignoring malformed API port: %s", value)
+				slog.Warn("ignoring malformed API port", slog.String("value", value))
 			}
 		case "loglevel":
 			switch strings.ToLower(value) {
