@@ -516,6 +516,9 @@ func runCLI(_ context.Context, cmd *cli.Command) error {
 		return impl.RunSetDisplayName(input)
 	case impl.ASetAnsibleHostname:
 		return impl.RunSetAnsibleHostname(input)
+	case impl.ARunModule:
+		// TODO validate module first
+		return impl.RunModule(input)
 	case impl.AListModules:
 		return impl.RunListModules(input)
 	case impl.AUploadLocalArchive:
