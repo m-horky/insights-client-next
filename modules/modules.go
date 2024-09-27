@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"reflect"
 	"strings"
 	"time"
 )
@@ -44,6 +45,17 @@ func GetModule(name string) (*Module, IError) {
 		}
 	}
 	return nil, NewError(ErrNoModule, nil, fmt.Sprintf("Module not found: %s", name))
+}
+
+func CommandExists(name []string) bool {
+	for _, module := range GetModules() {
+		for _, cmd := range module.Commands {
+			if reflect.DeepEqual(cmd, name) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // CreateArchiveDirectory creates a new directory with semi-random name at `parent`
