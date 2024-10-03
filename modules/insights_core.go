@@ -16,13 +16,16 @@ func GetAdvisorModule() *Module {
 		Env:     getInsightsCoreEnv(),
 		Exec:    []string{"python3", "-m", "insights.client.phase.v2"},
 		Commands: []ModuleCommand{
-			{Name: []string{"collect"}},
-			{Name: []string{"check-results"}},
-			{Name: []string{"show-results"}},
-			{Name: []string{"list-specs"}},
-			{Name: []string{"diagnosis"}},
+			{Name: []string{"advisor", "collect"}},
+			{Name: []string{"advisor", "check-results"}},
+			{Name: []string{"advisor", "show-results"}},
+			{Name: []string{"advisor", "list-specs"}},
+			{Name: []string{"advisor", "diagnosis"}},
+			{Name: []string{"advisor", "manifest"}},
+			{Name: []string{"advisor", "build-packagecache"}},
+			{Name: []string{"advisor", "validate"}},
 		},
-		ArchiveCommandName: []string{"collect"},
+		ArchiveCommandName: []string{"advisor", "collect"},
 		ArchiveContentType: "application/vnd.redhat.advisor.collection",
 	}
 }
@@ -34,9 +37,9 @@ func GetComplianceModule() *Module {
 		Env:     getInsightsCoreEnv(),
 		Exec:    []string{"python3", "-m", "insights.client.phase.v2"},
 		Commands: []ModuleCommand{
-			{Name: []string{"collect"}},
+			{Name: []string{"compliance", "collect"}},
 		},
-		ArchiveCommandName: []string{"collect"},
+		ArchiveCommandName: []string{"compliance", "collect"},
 		ArchiveContentType: "application/vnd.redhat.compliance.something",
 	}
 }
@@ -48,9 +51,9 @@ func GetMalwareModule() *Module {
 		Env:     getInsightsCoreEnv(),
 		Exec:    []string{"python3", "-m", "insights.client.phase.v2"},
 		Commands: []ModuleCommand{
-			{Name: []string{"collect"}},
+			{Name: []string{"malware", "collect"}},
 		},
-		ArchiveCommandName: []string{"collect"},
+		ArchiveCommandName: []string{"malware", "collect"},
 		ArchiveContentType: "application/vnd.redhat.malware-detection.results",
 	}
 }
