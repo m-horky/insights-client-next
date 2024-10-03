@@ -59,15 +59,20 @@ func GetModule(name string) (*Module, IError) {
 	return nil, NewError(ErrNoModule, nil, fmt.Sprintf("Module not found: %s", name))
 }
 
-func CommandExists(command []string) bool {
+func GetModuleByCommand(command []string) (found *Module, ok bool) {
 	for _, module := range GetModules() {
 		for _, cmd := range module.Commands {
-			if reflect.DeepEqual(cmd, command) {
-				return true
+			if reflect.DeepEqual(cmd.Name, command) {
+				return module, true
 			}
 		}
 	}
-	return false
+	return nil, false
+}
+
+func CommandExists(command []string) bool {
+	_, ok := GetModuleByCommand(command)
+	return ok
 }
 
 // CreateArchiveDirectory creates a new directory with semi-random name at `parent`

@@ -71,6 +71,7 @@ func RunRegister(input *Input) internal.IError {
 	if err != nil {
 		return err
 	}
+	defer os.RemoveAll(archiveDirectory)
 	Spinner.Maybe(input, "Collecting host data.")
 	var options []string
 	if args.DisplayName != "" {
@@ -84,7 +85,6 @@ func RunRegister(input *Input) internal.IError {
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(archiveDirectory)
 
 	Spinner.Maybe(input, "Compressing host data.")
 	archiveFile, err := internal.CompressDirectoryToPath(archiveDirectory, archiveDirectory+".tar.xz")
