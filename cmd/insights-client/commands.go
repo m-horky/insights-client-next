@@ -2,13 +2,13 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strings"
 	"time"
 
@@ -120,35 +120,38 @@ var cliRootFlags = []Flag{
 	{"INVENTORY", 's', "display-name", "set display name of a host", []string{}},
 	{"INVENTORY", 's', "ansible-host", "set Ansible display name of a host", []string{}},
 	{"INVENTORY", 's', "group", "add system to Inventory group", []string{}},
-	{"MODULES", 's', "output-dir", "do not upload, collect into directory", []string{}},
-	{"MODULES", 's', "output-file", "do not upload, collect into file", []string{}},
-	{"MODULES", 's', "payload", "upload archive from this path", []string{}},
-	{"MODULES", 's', "content-type", "upload archive with this content type", []string{}},
-	{"MODULES", 's', "collector", "run module collector", []string{"m"}},
-	{"MODULES", 'b', "check-results", "download Advisor report", []string{}},
-	{"MODULES", 'b', "show-results", "display Advisor report", []string{}},
-	{"MODULES", 'b', "list-specs", "display Advisor collection specs", []string{}},
-	{"MODULES", 'b', "diagnosis", "display Remediations report", []string{}},
-	{"MODULES", 'b', "compliance", "run compliance", []string{}},
-	{"MODULES", 'b', "no-upload", "alias for '--output-file [PATH]'", []string{}},
-	{"MODULES", 'b', "keep-archive", "alias for '--output-file [PATH]'", []string{}},
+	{"COLLECTION", 's', "output-dir", "do not upload, collect into directory", []string{}},
+	{"COLLECTION", 's', "output-file", "do not upload, collect into file", []string{}},
+	{"COLLECTION", 's', "payload", "upload archive from this path", []string{}},
+	{"COLLECTION", 's', "content-type", "upload archive with this content type", []string{}},
+	{"COLLECTION", 's', "collector", "run module collector", []string{"m"}},
+	{"COLLECTION", 'b', "check-results", "download Advisor report", []string{}},
+	{"COLLECTION", 'b', "show-results", "display Advisor report", []string{}},
+	{"COLLECTION", 'b', "list-specs", "display Advisor collection specs", []string{}},
+	{"COLLECTION", 'b', "diagnosis", "display Remediations report", []string{}},
+	{"COLLECTION", 'b', "compliance", "run compliance", []string{}},
+	{"COLLECTION", 'b', "no-upload", "alias for '--output-file [PATH]'", []string{}},
+	{"COLLECTION", 'b', "keep-archive", "alias for '--output-file [PATH]'", []string{}},
+	{"COLLECTION", 's', "manifest", "run Advisor with manifest", []string{}},
+	{"COLLECTION", 'b', "validate", "validate Advisor denylist", []string{}},
+	{"COLLECTION", 's', "build-packagecache", "refresh system package manager cache", []string{}},
 	{"GLOBAL", 's', "format", "change output format", []string{}},
 	{"GLOBAL", 'b', "debug", "print logs to stderr instead of a log file", []string{}},
 	{"GLOBAL", 'b', "offline", "for some commands, only do local changes", []string{}},
-	{"DEPRECATED", 'b', "retry", "ignored", []string{}},
-	{"DEPRECATED", 'b', "validate", "ignored", []string{}},
+	{"DEPRECATED", 's', "retry", "ignored", []string{}},
 	{"DEPRECATED", 'b', "quiet", "ignored", []string{}},
 	{"DEPRECATED", 'b', "silent", "ignored", []string{}},
 	{"DEPRECATED", 'b', "conf", "ignored", []string{"c"}},
 	{"DEPRECATED", 'b', "compressor", "ignored", []string{}},
 	{"DEPRECATED", 'b', "logging-file", "ignored", []string{}},
+	{"DEPRECATED", 'b', "net-debug", "ignored", []string{}},
 	{"DEPRECATED", 'b', "enable-schedule", "alias for '--register'", []string{}},
 	{"DEPRECATED", 'b', "disable-schedule", "alias for '--unregister'", []string{}},
 }
 
 func buildHelpText() string {
 	// FIXME Can we make this not break in narrow terminals?
-	help := []string{`Usage: {{.Name}} [COMMAND] [FLAGS]`}
+	help := []string{`Usage: insights-client [COMMAND] [FLAGS]`}
 
 	maxFlagLength := 0
 	for _, flag := range cliRootFlags {
@@ -222,9 +225,11 @@ func buildCLI() *cli.Command {
 // It ensures cliRootFlags that assume other cliRootFlags are properly joined.
 func validateCLI(cmd *cli.Command) internal.IError {
 	globalFlags := []string{"format", "debug"}
+	noopFlags := []string{"quiet", "retry", "silent", "conf", "compressor", "logging-file", "net-debug"}
 
 	// this includes the list of all valid combinations
 	flagCombinations := [][]string{
+		// HOST
 		{"register"},
 		{"register", "display-name"},
 		{"register", "ansible-host"},
@@ -236,54 +241,57 @@ func validateCLI(cmd *cli.Command) internal.IError {
 		{"unregister"},
 		{"status"},
 		{"checkin"},
+		{"test-connection"},
+		{"support"},
+		// INVENTORY
 		{"display-name"},
 		{"ansible-host"},
 		{"group"},
 		{"group", "offline"},
-		{"module"},
-		{"module", "module-option"},
-		{"module-list"},
+		// COLLECTION
+		{"payload", "content-type"},
 		{"output-dir"},
 		{"output-file"},
+		{"collector"},
+		{"collector", "output-dir"},
+		{"collector", "output-file"},
+		{"collector", "no-upload"},
+		{"collector", "keep-archive"},
+		{"compliance"},
 		{"compliance", "output-dir"},
 		{"compliance", "output-file"},
-		{"compliance", "module-option", "output-dir"},
-		{"compliance", "module-option", "output-file"},
-		{"malware", "output-dir"},
-		{"malware", "output-file"},
-		{"malware", "module-option", "output-dir"},
-		{"malware", "module-option", "output-file"},
-		{"payload", "content-type"},
-		{"test-connection"},
-		{"support"},
+		{"compliance", "no-upload"},
+		{"compliance", "keep-archive"},
+		{"check-results"},
+		{"show-results"},
+		{"list-specs"},
+		{"diagnosis"},
+		{"no-upload"},
+		{"keep-archive"},
+		{"manifest"},
+		{"build-packagecache"},
+		// DEPRECATED
+		{"validate"},
+		{"enable-schedule"},
+		{"disable-schedule"},
 	}
 
-	// key holds the primary flag we match by, the rest is modifiers
 	setFlags := make(map[string]bool)
 
 	for _, flag := range cmd.Flags {
 		flagName := flag.Names()[0]
 
 		if cmd.IsSet(flagName) {
-			// resolve aliased commands
-			resolvedFlagName, resolvedFlagNameOptions := resolveAlias(flagName)
-			// announce deprecated & with no effect
-			if resolvedFlagName == "" {
-				fmt.Printf("Notice: Flag '--%s' is deprecated and has no effect.\n", flagName)
-				continue
-			}
-			// announce deprecated & aliased
-			if resolvedFlagName != flagName {
-				if resolvedFlagNameOptions != "" {
-					resolvedFlagName += "" + resolvedFlagNameOptions
-				}
-				fmt.Printf("Notice: Flag '--%s' is deprecated, use '--%s' instead.\n", flagName, resolvedFlagName)
-			}
-
-			// we don't need to check global cliRootFlags, they can be applied to everything
+			// we don't need to check global flags, they can be applied to everything
 			flagIsGlobal := false
 			for _, globalFlag := range globalFlags {
-				if resolvedFlagName == globalFlag {
+				if flagName == globalFlag {
+					flagIsGlobal = true
+					break
+				}
+			}
+			for _, globalFlag := range noopFlags {
+				if flagName == globalFlag {
 					flagIsGlobal = true
 					break
 				}
@@ -292,24 +300,22 @@ func validateCLI(cmd *cli.Command) internal.IError {
 				continue
 			}
 
-			if _, found := setFlags[resolvedFlagName]; found {
-				// resolved cliRootFlags conflict (e.g. `--compliance --diagnosis`)
-				return internal.NewError(internal.ErrInput, errors.New("found conflict in module flags"), "This flag combination is not valid.")
-			}
-			setFlags[resolvedFlagName] = true
+			setFlags[flagName] = true
 		}
 	}
 
-	// Exit immediately if no cliRootFlags were entered. Global cliRootFlags are not considered.
+	// Exit immediately if no flags were entered. Global flags are not considered.
 	if len(setFlags) == 0 {
 		return nil
 	}
-	// Exit immediately if we find combination match: validation is complete. Global cliRootFlags are not considered.
+	// Exit immediately if we find combination match: validation is complete.
 	var finalFlags []string
 	for flag := range setFlags {
 		finalFlags = append(finalFlags, flag)
 	}
+	sort.Strings(finalFlags)
 	for _, combination := range flagCombinations {
+		sort.Strings(combination)
 		if reflect.DeepEqual(combination, finalFlags) {
 			return nil
 		}
@@ -318,32 +324,15 @@ func validateCLI(cmd *cli.Command) internal.IError {
 	// TODO Display all flag combinations that use the entered flags
 	//  "Did you mean...?"
 
-	return internal.NewError(internal.ErrInput, errors.New("found generic flag conflict"), "This flag combination is not valid.")
-}
-
-// resolveAlias is used by validateCLI during flag combination check.
-//
-// A flag may be defined as an alias; this ensures we do not need to check them.
-//
-// Returns the input if the command is not an alias, empty string if the alias is noop, new string for resolved flag.
-// Because this feeds directly into text notification about the alias, a slice is always returned. Only the first
-// item will be used for comparison, full slice is used to display the help text.
-func resolveAlias(flag string) (string, string) {
-	switch flag {
-	case "retry", "validate", "quiet", "silent", "conf", "compressor", "logging-file":
-		return "", ""
-	case "diagnosis", "check-results", "show-results", "list-specs":
-		return "module", "=advisor --module-option=" + flag
-	case "compliance":
-		return "module", "=compliance"
-	case "no-upload", "keep-archive":
-		return "output-file", ""
-	case "enable-schedule":
-		return "register", ""
-	case "disable-schedule":
-		return "unregister", ""
+	setFlagList := make([]string, 0)
+	for flag, _ := range setFlags {
+		setFlagList = append(setFlagList, flag)
 	}
-	return flag, ""
+	return internal.NewError(
+		internal.ErrInput,
+		fmt.Errorf("bad flag combination: %s", strings.Join(setFlagList, ",")),
+		"This flag combination is not valid.",
+	)
 }
 
 // parseCLI converts the cli.Command object into a clean structure.
@@ -369,7 +358,7 @@ func parseCLI(cmd *cli.Command) (*impl.Input, error) {
 	// host
 	if cmd.IsSet("register") && input.Action == impl.ANone {
 		input.Action = impl.ARegister
-		input.RegisterArgs = impl.ARegisterArgs{
+		input.Args = impl.ARegisterArgs{
 			Group:           cmd.String("group"),
 			DisplayName:     cmd.String("display-name"),
 			AnsibleHostname: cmd.String("ansible-host"),
@@ -394,83 +383,117 @@ func parseCLI(cmd *cli.Command) (*impl.Input, error) {
 	// inventory
 	if cmd.IsSet("display-name") && input.Action == impl.ANone {
 		input.Action = impl.ASetDisplayName
-		input.SetDisplayNameArgs = impl.ASetDisplayNameArgs{Name: cmd.String("display-name")}
+		input.Args = impl.ASetDisplayNameArgs{Name: cmd.String("display-name")}
 	}
 	if cmd.IsSet("ansible-host") && input.Action == impl.ANone {
 		input.Action = impl.ASetAnsibleHostname
-		input.SetAnsibleHostnameArgs = impl.ASetAnsibleHostnameArgs{Name: cmd.String("ansible-host")}
+		input.Args = impl.ASetAnsibleHostnameArgs{Name: cmd.String("ansible-host")}
 	}
-
-	// modules
-	if cmd.IsSet("module-list") && input.Action == impl.ANone {
-		input.Action = impl.AListModules
-	}
-	if (cmd.IsSet("module") || cmd.IsSet("collector")) && input.Action == impl.ANone {
-		input.Action = impl.ARunModule
-		collector := cmd.StringSlice("collector")
-		if cmd.IsSet("module") {
-			collector = cmd.StringSlice("module")
-		}
-		input.RunModuleArgs = impl.ARunModuleArgs{Name: collector}
-	}
-	if cmd.IsSet("payload") && cmd.IsSet("content-type") && input.Action == impl.ANone {
-		input.Action = impl.AUploadLocalArchive
-		input.UploadLocalArchiveArgs = impl.AUploadLocalArchiveArgs{
-			Path:        cmd.String("payload"),
-			ContentType: cmd.String("content-type"),
-		}
-	}
-
-	// aliases
 	if cmd.IsSet("group") && cmd.IsSet("offline") && input.Action == impl.ANone {
 		input.Action = impl.ASetGroupLocally
 	}
 	if cmd.IsSet("group") && input.Action == impl.ANone {
 		input.Action = impl.ARunModule
-		input.RunModuleArgs = impl.ARunModuleArgs{
-			Name:    []string{"advisor", "collect"},
+		input.Args = impl.ARunModuleArgs{
+			Command: modules.GetAdvisorModule().ArchiveCommandName,
 			Options: []string{"--group " + cmd.String("group")},
+		}
+	}
+
+	// collection
+	if cmd.IsSet("payload") && cmd.IsSet("content-type") && input.Action == impl.ANone {
+		input.Action = impl.AUploadLocalArchive
+		input.Args = impl.AUploadLocalArchiveArgs{
+			Path:        cmd.String("payload"),
+			ContentType: cmd.String("content-type"),
+		}
+	}
+	if cmd.IsSet("collector") && input.Action == impl.ANone {
+		switch cmd.String("collector") {
+		case "malware-detection":
+			input.Action = impl.ARunModule
+			input.Args = impl.ARunModuleArgs{Command: modules.GetMalwareModule().ArchiveCommandName}
+		default:
+			return nil, internal.NewError(nil, nil, fmt.Sprintf("Collector not known: '%s'.", cmd.String("collector")))
 		}
 	}
 	if cmd.IsSet("compliance") && input.Action == impl.ANone {
 		input.Action = impl.ARunModule
-		input.RunModuleArgs = impl.ARunModuleArgs{Name: []string{"compliance", "collect"}}
+		input.Args = impl.ARunModuleArgs{Command: modules.GetComplianceModule().ArchiveCommandName}
 	}
 	if cmd.IsSet("check-results") && input.Action == impl.ANone {
 		input.Action = impl.ARunModule
-		input.RunModuleArgs = impl.ARunModuleArgs{Name: []string{"advisor", "check-results"}}
+		input.Args = impl.ARunModuleArgs{Command: []string{"advisor", "check-results"}}
 	}
 	if cmd.IsSet("show-results") && input.Action == impl.ANone {
 		input.Action = impl.ARunModule
-		input.RunModuleArgs = impl.ARunModuleArgs{Name: []string{"advisor", "show-results"}}
+		input.Args = impl.ARunModuleArgs{Command: []string{"advisor", "show-results"}}
+	}
+	if cmd.IsSet("list-specs") && input.Action == impl.ANone {
+		input.Action = impl.ARunModule
+		input.Args = impl.ARunModuleArgs{Command: []string{"advisor", "list-specs"}}
+	}
+	if cmd.IsSet("diagnosis") && input.Action == impl.ANone {
+		input.Action = impl.ARunModule
+		input.Args = impl.ARunModuleArgs{Command: []string{"advisor", "diagnosis"}}
+	}
+	if cmd.IsSet("manifest") && input.Action == impl.ANone {
+		input.Action = impl.ARunModule
+		input.Args = impl.ARunModuleArgs{Command: []string{"advisor", "manifest"}}
+	}
+	if cmd.IsSet("build-packagecache") && input.Action == impl.ANone {
+		input.Action = impl.ARunModule
+		input.Args = impl.ARunModuleArgs{Command: []string{"advisor", "build-packagecache"}}
+	}
+	if cmd.IsSet("validate") && input.Action == impl.ANone {
+		input.Action = impl.ARunModule
+		input.Args = impl.ARunModuleArgs{Command: []string{"advisor", "validate"}}
 	}
 
+	// default action
 	if input.Action == impl.ANone {
 		input.Action = impl.ARunModule
-		input.RunModuleArgs = impl.ARunModuleArgs{Name: []string{"advisor", "collect"}, Options: parseModuleOptions(cmd.StringSlice("module-options"))}
+		input.Args = impl.ARunModuleArgs{Command: modules.GetAdvisorModule().ArchiveCommandName}
 	}
 
-	// module cliRootFlags
+	// module flags
 	if input.Action == impl.ARunModule {
-		if !modules.CommandExists(input.RunModuleArgs.Name) {
-			return nil, internal.NewError(nil, nil, fmt.Sprintf("No module implements command '%s'.", strings.Join(input.RunModuleArgs.Name, " ")))
+		args := input.Args.(impl.ARunModuleArgs)
+		if !modules.CommandExists(args.Command) {
+			return nil, internal.NewError(nil, nil, fmt.Sprintf("No module implements command '%s'.", strings.Join(args.Command, " ")))
 		}
 
-		input.RunModuleArgs.OutputFile = filepath.Join(internal.ArchiveDirectoryParentPath, fmt.Sprintf("archive-%d.tar.xz", time.Now().Unix()))
-		input.RunModuleArgs.OutputDir = cmd.String("output-dir")
-		input.RunModuleArgs.OutputFile = cmd.String("output-file")
-		input.RunModuleArgs.Options = append(input.RunModuleArgs.Options, parseModuleOptions(cmd.StringSlice("module-option"))...)
+		// We have to figure out what to do based on the following options:
+		// --no-upload
+		// --keep-archive
+		// --offline
+		// --output-dir
+		// --output-file
+		if cmd.IsSet("output-dir") {
+			args.ArchiveParent = cmd.String("output-dir")
+			args.ArchiveName = fmt.Sprintf("archive-%d", time.Now().Unix())
+			args.StopAtDir = true
+		} else if cmd.IsSet("output-file") {
+			args.ArchiveParent = filepath.Dir(cmd.String("output-file"))
+			args.ArchiveName = strings.Split(filepath.Base(cmd.String("output-file")), ".")[0]
+			args.StopAtFile = true
+		} else if cmd.IsSet("no-upload") {
+			args.ArchiveParent = internal.ArchiveDirectoryParentPath
+			args.ArchiveName = fmt.Sprintf("archive-%d", time.Now().Unix())
+			args.StopAtFile = true
+		} else if cmd.IsSet("offline") {
+			args.ArchiveParent = internal.ArchiveDirectoryParentPath
+			args.ArchiveName = fmt.Sprintf("archive-%d", time.Now().Unix())
+			args.StopAtFile = true
+		} else if cmd.IsSet("keep-archive") {
+			args.ArchiveParent = internal.ArchiveDirectoryParentPath
+			args.ArchiveName = fmt.Sprintf("archive-%d", time.Now().Unix())
+			args.StopAtCleanup = true
+		}
+		input.Args = args
 	}
 
 	return input, nil
-}
-
-func parseModuleOptions(options []string) []string {
-	result := make([]string, 0)
-	for _, option := range options {
-		result = append(result, "--"+option)
-	}
-	return result
 }
 
 func runCLI(_ context.Context, cmd *cli.Command) error {
@@ -507,10 +530,7 @@ func runCLI(_ context.Context, cmd *cli.Command) error {
 	case impl.ASetAnsibleHostname:
 		return impl.RunSetAnsibleHostname(input)
 	case impl.ARunModule:
-		// TODO validate module first
 		return impl.RunModule(input)
-	case impl.AListModules:
-		return impl.RunListModules(input)
 	case impl.AUploadLocalArchive:
 		return impl.RunUploadLocalArchive(input)
 	case impl.ATestConnection:

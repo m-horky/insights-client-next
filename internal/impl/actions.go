@@ -42,7 +42,6 @@ const (
 	ACheckIn
 	ASetDisplayName
 	ASetAnsibleHostname
-	AListModules
 	ARunModule
 	AUploadLocalArchive
 	ATestConnection
@@ -51,14 +50,10 @@ const (
 )
 
 type Input struct {
-	Action                 InputAction
-	Debug                  bool
-	Format                 internal.Format
-	RegisterArgs           ARegisterArgs
-	SetDisplayNameArgs     ASetDisplayNameArgs
-	SetAnsibleHostnameArgs ASetAnsibleHostnameArgs
-	RunModuleArgs          ARunModuleArgs
-	UploadLocalArchiveArgs AUploadLocalArchiveArgs
+	Action InputAction
+	Debug  bool
+	Format internal.Format
+	Args   any
 }
 
 type ARegisterArgs struct {
@@ -76,11 +71,18 @@ type ASetAnsibleHostnameArgs struct {
 }
 
 type ARunModuleArgs struct {
-	Name       []string
-	Options    []string
-	Offline    bool
-	OutputDir  string
-	OutputFile string
+	Command []string
+	Options []string
+	// ArchiveParent is a filesystem path to a directory.
+	ArchiveParent string
+	// ArchiveName is a filename with no parents and no extension.
+	ArchiveName string
+	// StopAtDir performs collection, but not compression, upload or deletion of the directory.
+	StopAtDir bool
+	// StopAtFile performs collection and compression, but not upload or deletion of the archive.
+	StopAtFile bool
+	// KeepArchive performs collection, compression and upload, but not deletion of an archive.
+	StopAtCleanup bool
 }
 
 type AUploadLocalArchiveArgs struct {

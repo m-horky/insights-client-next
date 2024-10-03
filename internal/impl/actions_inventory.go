@@ -75,7 +75,9 @@ func RunStatus(input *Input) internal.IError {
 
 // RunSetDisplayName calls Inventory API.
 func RunSetDisplayName(input *Input) internal.IError {
-	if input.SetDisplayNameArgs.Name == "" {
+	args := input.Args.(ASetDisplayNameArgs)
+
+	if args.Name == "" {
 		return internal.NewError(internal.ErrInput, nil, "Display name cannot be empty.")
 	}
 
@@ -87,7 +89,7 @@ func RunSetDisplayName(input *Input) internal.IError {
 	}
 
 	Spinner.Maybe(input, "Updating host record in Inventory.")
-	err = inventory.UpdateDisplayName(host.InsightsInventoryID, input.SetDisplayNameArgs.Name)
+	err = inventory.UpdateDisplayName(host.InsightsInventoryID, args.Name)
 	Spinner.Stop()
 	if err != nil {
 		return err
@@ -98,7 +100,9 @@ func RunSetDisplayName(input *Input) internal.IError {
 
 // RunSetAnsibleHostname calls Inventory API.
 func RunSetAnsibleHostname(input *Input) internal.IError {
-	if input.SetAnsibleHostnameArgs.Name == "" {
+	args := input.Args.(ASetAnsibleHostnameArgs)
+
+	if args.Name == "" {
 		return internal.NewError(internal.ErrInput, nil, "Ansible hostname cannot be empty.")
 	}
 
@@ -110,7 +114,7 @@ func RunSetAnsibleHostname(input *Input) internal.IError {
 	}
 
 	Spinner.Maybe(input, "Updating host record in Inventory.")
-	err = inventory.UpdateDisplayName(host.InsightsInventoryID, input.SetAnsibleHostnameArgs.Name)
+	err = inventory.UpdateDisplayName(host.InsightsInventoryID, args.Name)
 	Spinner.Stop()
 	if err != nil {
 		return err

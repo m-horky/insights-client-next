@@ -14,6 +14,12 @@ import (
 
 // RunRegister performs the collection and writes special files.
 func RunRegister(input *Input) internal.IError {
+	args := input.Args.(ARegisterArgs)
+
+	if args.Group != "" {
+		// TODO Update group
+	}
+
 	Spinner.Maybe(input, "Fetching host record from Inventory.")
 	host, err := getCurrentInventoryHost()
 	Spinner.Stop()
@@ -37,7 +43,14 @@ func RunRegister(input *Input) internal.IError {
 		return err
 	}
 	Spinner.Maybe(input, "Collecting host data.")
-	err = module.Collect(archiveDirectory, input.RunModuleArgs.Options)
+	var options []string
+	if args.DisplayName != "" {
+		options = append(options, fmt.Sprintf("--display-name=%s", args.DisplayName))
+	}
+	if args.AnsibleHostname != "" {
+		options = append(options, fmt.Sprintf("--ansible-host=%s", args.AnsibleHostname))
+	}
+	err = module.Collect(archiveDirectory, options)
 	Spinner.Stop()
 	if err != nil {
 		return err

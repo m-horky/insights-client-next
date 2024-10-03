@@ -27,7 +27,12 @@ func TestValidateCLI_valid(t *testing.T) {
 		{[]string{"--payload", "x", "--content-type", "x"}},
 		{[]string{"--compliance"}},
 		{[]string{"--compliance", "--no-upload"}},
-		{[]string{"-m", "malware"}},
+		{[]string{"--collector", "x"}},
+		{[]string{"-m", "x"}},
+		{[]string{"-m", "x", "--no-upload"}},
+		{[]string{"-m", "x", "--keep-archive"}},
+		{[]string{"-m", "x", "--output-file", "x"}},
+		{[]string{"-m", "x", "--output-dir", "x"}},
 	}
 
 	for _, test := range tests {
@@ -61,6 +66,7 @@ func TestValidateCLI_invalid(t *testing.T) {
 		{[]string{"--status", "--content-type", "x"}},
 		{[]string{"--payload", "x", "--offline"}},
 		{[]string{"--payload", "x", "--output-dir", "x"}},
+		{[]string{"-m", "x", "--display-name", "x"}},
 	}
 
 	for _, test := range tests {
