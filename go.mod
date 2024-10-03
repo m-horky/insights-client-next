@@ -6,6 +6,7 @@ require (
 	github.com/briandowns/spinner v1.23.1
 	github.com/gookit/ini/v2 v2.2.3
 	github.com/urfave/cli/v3 v3.0.0-alpha9
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (

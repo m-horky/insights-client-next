@@ -1,10 +1,13 @@
 package impl
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
 	"time"
+
+	"gopkg.in/yaml.v3"
 
 	"github.com/m-horky/insights-client-next/api/ingress"
 	"github.com/m-horky/insights-client-next/api/inventory"
@@ -12,12 +15,38 @@ import (
 	"github.com/m-horky/insights-client-next/modules"
 )
 
+func setGroup(name string) internal.IError {
+	raw, err := os.ReadFile(internal.TagsPath)
+	if errors.Is(err, os.ErrNotExist) {
+		// the file does not exist yet
+	} else if err != nil {
+		return internal.NewError(nil, err, "Could not read tags file.")
+	}
+
+	t := make(map[string]any)
+	if err = yaml.Unmarshal(raw, &t); err != nil {
+		return internal.NewError(nil, err, "Could not parse tags file.")
+	}
+
+	t["group"] = name
+
+	if _, err = yaml.Marshal(&t); err != nil {
+		return internal.NewError(nil, err, "Could not write tags file.")
+	}
+
+	slog.Debug("updated tags file", slog.String("group", name))
+	return nil
+}
+
 // RunRegister performs the collection and writes special files.
 func RunRegister(input *Input) internal.IError {
 	args := input.Args.(ARegisterArgs)
 
 	if args.Group != "" {
-		// TODO Update group
+		if err := setGroup(args.Group); err != nil {
+			return err
+		}
+		fmt.Printf("Host group was set to '%s'.\n", args.Group)
 	}
 
 	Spinner.Maybe(input, "Fetching host record from Inventory.")
@@ -116,10 +145,15 @@ func RunUnregister(input *Input) internal.IError {
 	return nil
 }
 
-// RunSetGroupLocally updates tags.yaml file. It does not perform data collection.
+// RunSetGroupLocally updates tags.yaml file. It does not upload the changes.
 func RunSetGroupLocally(input *Input) internal.IError {
-	// TODO
-	return internal.NewError(internal.ErrInput, nil, "Archive upload is not implemented.")
+	args := input.Args.(ASetGroupLocallyArgs)
+
+	if err := setGroup(args.Name); err != nil {
+		return err
+	}
+	fmt.Printf("Host group was set to '%s'. To update the Inventory record, perform a data collection.\n", args.Name)
+	return nil
 }
 
 func RunTestConnection(input *Input) internal.IError {

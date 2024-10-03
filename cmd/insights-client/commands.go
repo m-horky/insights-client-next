@@ -391,6 +391,7 @@ func parseCLI(cmd *cli.Command) (*impl.Input, error) {
 	}
 	if cmd.IsSet("group") && cmd.IsSet("offline") && input.Action == impl.ANone {
 		input.Action = impl.ASetGroupLocally
+		input.Args = impl.ASetGroupLocallyArgs{Name: cmd.String("group")}
 	}
 	if cmd.IsSet("group") && input.Action == impl.ANone {
 		input.Action = impl.ARunModule

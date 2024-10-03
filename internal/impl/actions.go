@@ -89,3 +89,7 @@ type AUploadLocalArchiveArgs struct {
 	Path        string
 	ContentType string
 }
+
+type ASetGroupLocallyArgs struct {
+	Name string
+}
