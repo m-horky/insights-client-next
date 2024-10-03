@@ -56,6 +56,9 @@ func initLogging() {
 		slog.SetDefault(slog.New(internal.NewFileHandler(
 			fp, &slog.HandlerOptions{AddSource: true, Level: internal.GetConfiguration().LogLevel},
 		)))
+
+		// write empty line to the log, to make new invocations more obvious
+		_, _ = fp.WriteString("\n")
 	}
 }
 

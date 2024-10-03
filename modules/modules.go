@@ -95,7 +95,7 @@ func (m *Module) RunCommand(command, args []string) IError {
 	cmd.Env = m.Env
 
 	slog.Debug(
-		"running module command",
+		"running module",
 		slog.String("name", m.Name),
 		slog.String("version", m.Version),
 		slog.String("command", strings.Join(argv, " ")),
@@ -104,7 +104,7 @@ func (m *Module) RunCommand(command, args []string) IError {
 
 	err := cmd.Run()
 	if err != nil {
-		slog.Error("module command failed", slog.String("error", err.Error()))
+		slog.Error("module failed", slog.String("error", err.Error()))
 		return NewError(
 			ErrRun,
 			errors.Join(err, errors.New(stderr.String())),
@@ -112,7 +112,7 @@ func (m *Module) RunCommand(command, args []string) IError {
 		)
 	}
 
-	slog.Debug("module command finished")
+	slog.Debug("module finished")
 	return nil
 }
 
@@ -121,7 +121,7 @@ func (m *Module) RunCommand(command, args []string) IError {
 // `directory` has to exist and has to be writable.
 func (m *Module) Collect(directory string, args []string) IError {
 	if len(m.ArchiveCommandName) == 0 {
-		return NewError(ErrRun, nil, "OldModule does not have collection capabilities.")
+		return NewError(ErrRun, nil, "Module does not have collection capabilities.")
 	}
 
 	args = append(args, fmt.Sprintf("--archive=%s", directory))
