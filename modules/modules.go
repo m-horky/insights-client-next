@@ -13,20 +13,32 @@ import (
 	"time"
 )
 
+type ModuleFlag struct {
+	Name    string
+	Aliases []string
+	Type    rune
+}
+
+type ModuleCommand struct {
+	Name  []string
+	Flags []ModuleFlag
+}
+
 type Module struct {
-	// Name is human- and machine-readable name.
+	// Name is human- and machine-readable name in lowercase.
 	Name string
 	// Version is the package version.
 	Version string
-	// Env is a list of environment variables that should always be set.
-	Env []string
-	// Exec is path to a binary which should be executed, followed by flags that should always be set.
+	// Exec is a path to a binary which should be executed, followed by flags that are always set.
 	Exec []string
-	// Commands is a list valid (nestable) subcommands.
-	Commands [][]string
-	// ArchiveCommand is executed to perform a collection. It must be part of Commands.
-	ArchiveCommand []string
-	// ArchiveContentType is used as HTTP Content-Type for uploaded data archive.
+	// Env is a list of environment variables that are always set.
+	Env []string
+
+	Commands []ModuleCommand
+
+	// ArchiveCommandName is executed to perform a collection. Must be specified in Commands.
+	ArchiveCommandName []string
+	// ArchiveContentType is used as an HTTP Content-Type for uploaded data archive.
 	ArchiveContentType string
 }
 
@@ -47,10 +59,10 @@ func GetModule(name string) (*Module, IError) {
 	return nil, NewError(ErrNoModule, nil, fmt.Sprintf("Module not found: %s", name))
 }
 
-func CommandExists(name []string) bool {
+func CommandExists(command []string) bool {
 	for _, module := range GetModules() {
 		for _, cmd := range module.Commands {
-			if reflect.DeepEqual(cmd, name) {
+			if reflect.DeepEqual(cmd, command) {
 				return true
 			}
 		}
@@ -108,10 +120,10 @@ func (m *Module) RunCommand(command, args []string) IError {
 //
 // `directory` has to exist and has to be writable.
 func (m *Module) Collect(directory string, args []string) IError {
-	if len(m.ArchiveCommand) == 0 {
-		return NewError(ErrRun, nil, "Module does not have collection capabilities.")
+	if len(m.ArchiveCommandName) == 0 {
+		return NewError(ErrRun, nil, "OldModule does not have collection capabilities.")
 	}
 
 	args = append(args, fmt.Sprintf("--archive=%s", directory))
-	return m.RunCommand(m.ArchiveCommand, args)
+	return m.RunCommand(m.ArchiveCommandName, args)
 }

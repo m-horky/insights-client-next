@@ -11,3 +11,7 @@ build:
 check:
 	goimports -w -l .
 	gofmt -w -l .
+
+.PHONY: test
+test:
+	go test ./...

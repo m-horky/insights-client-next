@@ -25,6 +25,9 @@ func TestValidateCLI_valid(t *testing.T) {
 		{[]string{"--output-dir", "x"}},
 		{[]string{"--checkin"}},
 		{[]string{"--payload", "x", "--content-type", "x"}},
+		{[]string{"--compliance"}},
+		{[]string{"--compliance", "--no-upload"}},
+		{[]string{"-m", "malware"}},
 	}
 
 	for _, test := range tests {

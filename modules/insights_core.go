@@ -15,15 +15,14 @@ func GetAdvisorModule() *Module {
 		Version: getInsightsCoreVersion(),
 		Env:     getInsightsCoreEnv(),
 		Exec:    []string{"python3", "-m", "insights.client.phase.v2"},
-		Commands: [][]string{
-			{"advisor"},
-			{"advisor", "collect"},
-			{"advisor", "check-results"},
-			{"advisor", "show-results"},
-			{"advisor", "list-specs"},
-			{"advisor", "diagnosis"},
+		Commands: []ModuleCommand{
+			{Name: []string{"collect"}},
+			{Name: []string{"check-results"}},
+			{Name: []string{"show-results"}},
+			{Name: []string{"list-specs"}},
+			{Name: []string{"diagnosis"}},
 		},
-		ArchiveCommand:     []string{"advisor", "collect"},
+		ArchiveCommandName: []string{"collect"},
 		ArchiveContentType: "application/vnd.redhat.advisor.collection",
 	}
 }
@@ -34,11 +33,10 @@ func GetComplianceModule() *Module {
 		Version: getInsightsCoreVersion(),
 		Env:     getInsightsCoreEnv(),
 		Exec:    []string{"python3", "-m", "insights.client.phase.v2"},
-		Commands: [][]string{
-			{"compliance"},
-			{"compliance", "collect"},
+		Commands: []ModuleCommand{
+			{Name: []string{"collect"}},
 		},
-		ArchiveCommand:     []string{"compliance", "collect"},
+		ArchiveCommandName: []string{"collect"},
 		ArchiveContentType: "application/vnd.redhat.compliance.something",
 	}
 }
@@ -49,11 +47,10 @@ func GetMalwareModule() *Module {
 		Version: getInsightsCoreVersion(),
 		Env:     getInsightsCoreEnv(),
 		Exec:    []string{"python3", "-m", "insights.client.phase.v2"},
-		Commands: [][]string{
-			{"malware"},
-			{"malware", "collect"},
+		Commands: []ModuleCommand{
+			{Name: []string{"collect"}},
 		},
-		ArchiveCommand:     []string{"malware", "collect"},
+		ArchiveCommandName: []string{"collect"},
 		ArchiveContentType: "application/vnd.redhat.malware-detection.results",
 	}
 }
@@ -82,6 +79,12 @@ var insightsCoreVersion = ""
 // Since the Core does not have its metadata in a file, we need to read this dynamically.
 func getInsightsCoreVersion() string {
 	if insightsCoreVersionIsCached {
+		return insightsCoreVersion
+	}
+
+	if os.Geteuid() != 0 {
+		insightsCoreVersion = "??? (not root)"
+		insightsCoreVersionIsCached = true
 		return insightsCoreVersion
 	}
 

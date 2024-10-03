@@ -22,6 +22,11 @@ import (
 	"github.com/m-horky/insights-client-next/modules"
 )
 
+// TODO Do not expose any new API.
+// TODO Map everything into the pretty Module style objects on background.
+// TODO Ensure the validation and parsing works for everything correctly.
+// TODO Add positive and negative tests for the CLI.
+
 func init() {
 	initLogging()
 	initCLI()
@@ -101,8 +106,8 @@ type Flag struct {
 	Aliases  []string
 }
 
-// flags defines all existing CLI flags.
-var flags = []Flag{
+// cliRootFlags defines all existing CLI flags.
+var cliRootFlags = []Flag{
 	{"HOST", 'b', "register", "register the host", []string{}},
 	{"HOST", 'b', "unregister", "unregister the host", []string{}},
 	{"HOST", 'b', "status", "display host status", []string{}},
@@ -112,13 +117,18 @@ var flags = []Flag{
 	{"INVENTORY", 's', "display-name", "set display name of a host", []string{}},
 	{"INVENTORY", 's', "ansible-host", "set Ansible display name of a host", []string{}},
 	{"INVENTORY", 's', "group", "add system to Inventory group", []string{}},
-	{"MODULES", 'l', "module", "run module", []string{"m", "collector"}},
-	{"MODULES", 'b', "module-list", "list modules", []string{}},
-	{"MODULES", 'l', "module-option", "set module option", []string{"opt"}},
 	{"MODULES", 's', "output-dir", "do not upload, collect into directory", []string{}},
 	{"MODULES", 's', "output-file", "do not upload, collect into file", []string{}},
 	{"MODULES", 's', "payload", "upload archive from this path", []string{}},
 	{"MODULES", 's', "content-type", "upload archive with this content type", []string{}},
+	{"MODULES", 's', "collector", "run module collector", []string{"m"}},
+	{"MODULES", 'b', "check-results", "download Advisor report", []string{}},
+	{"MODULES", 'b', "show-results", "display Advisor report", []string{}},
+	{"MODULES", 'b', "list-specs", "display Advisor collection specs", []string{}},
+	{"MODULES", 'b', "diagnosis", "display Remediations report", []string{}},
+	{"MODULES", 'b', "compliance", "run compliance", []string{}},
+	{"MODULES", 'b', "no-upload", "alias for '--output-file [PATH]'", []string{}},
+	{"MODULES", 'b', "keep-archive", "alias for '--output-file [PATH]'", []string{}},
 	{"GLOBAL", 's', "format", "change output format", []string{}},
 	{"GLOBAL", 'b', "debug", "print logs to stderr instead of a log file", []string{}},
 	{"GLOBAL", 'b', "offline", "for some commands, only do local changes", []string{}},
@@ -129,13 +139,6 @@ var flags = []Flag{
 	{"DEPRECATED", 'b', "conf", "ignored", []string{"c"}},
 	{"DEPRECATED", 'b', "compressor", "ignored", []string{}},
 	{"DEPRECATED", 'b', "logging-file", "ignored", []string{}},
-	{"DEPRECATED", 'b', "diagnosis", "alias for '-m advisor --opt=diagnosis'", []string{}},
-	{"DEPRECATED", 'b', "check-results", "alias for '-m advisor --opt=check-results'", []string{}},
-	{"DEPRECATED", 'b', "show-results", "alias for '-m advisor --opt=show-results'", []string{}},
-	{"DEPRECATED", 'b', "list-specs", "alias for '-m advisor --opt=list-specs'", []string{}},
-	{"DEPRECATED", 'b', "compliance", "alias for '-m compliance'", []string{}},
-	{"DEPRECATED", 'b', "no-upload", "alias for '--output-file [PATH]'", []string{}},
-	{"DEPRECATED", 'b', "keep-archive", "alias for '--output-file [PATH]'", []string{}},
 	{"DEPRECATED", 'b', "enable-schedule", "alias for '--register'", []string{}},
 	{"DEPRECATED", 'b', "disable-schedule", "alias for '--unregister'", []string{}},
 }
@@ -145,13 +148,13 @@ func buildHelpText() string {
 	help := []string{`Usage: {{.Name}} [COMMAND] [FLAGS]`}
 
 	maxFlagLength := 0
-	for _, flag := range flags {
+	for _, flag := range cliRootFlags {
 		if len(buildHelpFlag(flag)) > maxFlagLength {
 			maxFlagLength = len(buildHelpFlag(flag))
 		}
 	}
 	lastCategory := ""
-	for _, flag := range flags {
+	for _, flag := range cliRootFlags {
 		if flag.Category != lastCategory {
 			help = append(help, ``)
 			help = append(help, fmt.Sprintf("Category: %s", flag.Category))
@@ -185,7 +188,7 @@ func buildHelpFlag(flag Flag) string {
 
 func buildCLI() *cli.Command {
 	var cliFlags []cli.Flag
-	for _, flag := range flags {
+	for _, flag := range cliRootFlags {
 		switch flag.Type {
 		case 'b':
 			cliFlags = append(cliFlags, &cli.BoolFlag{Name: flag.Name, Aliases: flag.Aliases})
@@ -211,9 +214,9 @@ func buildCLI() *cli.Command {
 
 // validateCLI performs input validation.
 //
-// It shows notices for flags that are deprecated.
+// It shows notices for cliRootFlags that are deprecated.
 //
-// It ensures flags that assume other flags are properly joined.
+// It ensures cliRootFlags that assume other cliRootFlags are properly joined.
 func validateCLI(cmd *cli.Command) internal.IError {
 	globalFlags := []string{"format", "debug"}
 
@@ -239,10 +242,14 @@ func validateCLI(cmd *cli.Command) internal.IError {
 		{"module-list"},
 		{"output-dir"},
 		{"output-file"},
-		{"module", "output-dir"},
-		{"module", "output-file"},
-		{"module", "module-option", "output-dir"},
-		{"module", "module-option", "output-file"},
+		{"compliance", "output-dir"},
+		{"compliance", "output-file"},
+		{"compliance", "module-option", "output-dir"},
+		{"compliance", "module-option", "output-file"},
+		{"malware", "output-dir"},
+		{"malware", "output-file"},
+		{"malware", "module-option", "output-dir"},
+		{"malware", "module-option", "output-file"},
 		{"payload", "content-type"},
 		{"test-connection"},
 		{"support"},
@@ -270,7 +277,7 @@ func validateCLI(cmd *cli.Command) internal.IError {
 				fmt.Printf("Notice: Flag '--%s' is deprecated, use '--%s' instead.\n", flagName, resolvedFlagName)
 			}
 
-			// we don't need to check global flags, they can be applied to everything
+			// we don't need to check global cliRootFlags, they can be applied to everything
 			flagIsGlobal := false
 			for _, globalFlag := range globalFlags {
 				if resolvedFlagName == globalFlag {
@@ -283,18 +290,18 @@ func validateCLI(cmd *cli.Command) internal.IError {
 			}
 
 			if _, found := setFlags[resolvedFlagName]; found {
-				// resolved flags conflict (e.g. `--compliance --diagnosis`)
+				// resolved cliRootFlags conflict (e.g. `--compliance --diagnosis`)
 				return internal.NewError(internal.ErrInput, errors.New("found conflict in module flags"), "This flag combination is not valid.")
 			}
 			setFlags[resolvedFlagName] = true
 		}
 	}
 
-	// Exit immediately if no flags were entered. Global flags are not considered.
+	// Exit immediately if no cliRootFlags were entered. Global cliRootFlags are not considered.
 	if len(setFlags) == 0 {
 		return nil
 	}
-	// Exit immediately if we find combination match: validation is complete. Global flags are not considered.
+	// Exit immediately if we find combination match: validation is complete. Global cliRootFlags are not considered.
 	var finalFlags []string
 	for flag := range setFlags {
 		finalFlags = append(finalFlags, flag)
@@ -440,7 +447,7 @@ func parseCLI(cmd *cli.Command) (*impl.Input, error) {
 		input.RunModuleArgs = impl.ARunModuleArgs{Name: []string{"advisor", "collect"}, Options: parseModuleOptions(cmd.StringSlice("module-options"))}
 	}
 
-	// module flags
+	// module cliRootFlags
 	if input.Action == impl.ARunModule {
 		if !modules.CommandExists(input.RunModuleArgs.Name) {
 			return nil, internal.NewError(nil, nil, fmt.Sprintf("No module implements command '%s'.", strings.Join(input.RunModuleArgs.Name, " ")))
