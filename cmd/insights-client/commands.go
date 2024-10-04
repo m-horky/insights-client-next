@@ -393,14 +393,16 @@ func parseCLI(cmd *cli.Command) (*impl.Input, error) {
 		input.Args = impl.ASetAnsibleHostnameArgs{Name: cmd.String("ansible-host")}
 	}
 	if cmd.IsSet("group") && cmd.IsSet("offline") && input.Action == impl.ANone {
+		// TODO Should we check that it is not not empty string?
 		input.Action = impl.ASetGroupLocally
 		input.Args = impl.ASetGroupLocallyArgs{Name: cmd.String("group")}
 	}
 	if cmd.IsSet("group") && input.Action == impl.ANone {
+		// TODO Should we check that it is not not empty string?
 		input.Action = impl.ARunModule
 		input.Args = impl.ARunModuleArgs{
 			Command: modules.GetAdvisorModule().ArchiveCommandName,
-			Options: []string{"--group " + cmd.String("group")},
+			Options: []string{"--group", cmd.String("group")},
 		}
 	}
 

@@ -14,4 +14,4 @@ check:
 
 .PHONY: test
 test:
-	go test ./...
+	go test -v ./... | grep --invert-match '=== RUN'
